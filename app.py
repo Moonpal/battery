@@ -39,11 +39,36 @@ def send_data():
             else:
                 query = f"SELECT * FROM test01_ok_chg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 1"
             
+            # 쿼리문 실행
             cursor.execute(query)
-
             # 가져온 데이터를 JSON 형식으로 변환
             data = cursor.fetchone()
-           
+
+##################################################################################################################################
+# Way1
+            # if data:
+            #     df = pd.DataFrame([data])
+            #     sliced_df = df.iloc[:, 23:]
+            #     accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
+
+            #     # 최초 10초 동안 누적된 데이터에 대해 주성분 분석 수행
+            #     if len(accumulated_df) <= 10:
+            #         if len(accumulated_df) == 10:
+            #             processed_df = diff_smooth_df(accumulated_df.copy(), lags_n=0, diffs_n=0, smooth_n=0)
+            #             processed_df = do_pca(processed_df, 3)
+            #             print(processed_df)
+            #             json_data = processed_df.to_json(orient='records')
+            #             socketio.emit('update_table', {'data': json_data}, namespace='/test', room=None, skip_sid=None)
+
+            #     # 1초 간격으로 데이터가 누적될 때마다 주성분 분석 수행
+            #     elif len(accumulated_df) % 10 == 0:
+            #         processed_df = diff_smooth_df(accumulated_df.copy(), lags_n=0, diffs_n=0, smooth_n=0)
+            #         processed_df = do_pca(processed_df, 3)
+            #         print(processed_df)
+            #         json_data = processed_df.to_json(orient='records')
+            #         socketio.emit('update_table', {'data': json_data}, namespace='/test', room=None, skip_sid=None)
+###################################################################################################################################           
+# way2
             if data:
                 # 데이터프레임으로 변환
                 df = pd.DataFrame([data])
@@ -53,42 +78,23 @@ def send_data():
 
                 # 원본 데이터프레임에 현재 데이터 누적
                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
+                print(accumulated_df)
 
                  # 10초 이후부터 1초 간격으로 PCA 수행
                 if len(accumulated_df) > 10 and (len(accumulated_df) - 10) % 10 == 0:
                     processed_df = diff_smooth_df(accumulated_df.copy(), lags_n=0, diffs_n=0, smooth_n=0)
                     processed_df = do_pca(processed_df, 3)
+                    print(processed_df)
+
+                    # time_segment 함수 적용
 
                     # 전처리된 데이터를 JSON 형식으로 변환
                     json_data = processed_df.to_json(orient='records')
-                    print(json_data)
+                    
 
                     # 소켓을 통해 데이터를 모든 클라이언트로 전송
                     socketio.emit('update_table', {'data': json_data}, namespace='/test', room=None, skip_sid=None)
-#############################################################################################################################
-                # # 누적된 데이터프레임을 복사하여 전처리 함수 적용
-                # processed_df = diff_smooth_df(accumulated_df.copy(), lags_n=0, diffs_n=0, smooth_n=0)
-                # processed_df = do_pca(processed_df, 3)
-                # print(processed_df)
-
-                # # 전처리된 데이터를 JSON 형식으로 변환
-                # json_data = processed_df.to_json(orient='records')
-
-                # # 소켓을 통해 데이터를 모든 클라이언트로 전송
-                # socketio.emit('update_table', {'data': json_data}, namespace='/test', room=None, skip_sid=None)
-#############################################################################################################################
-
-#############################################################################################################################
-            # if data:
-            #     # 여기에서 데이터를 슬라이싱하여 원하는 열(24번째 열부터)까지 추출
-            #     sliced_data = {key: data[key] for key in list(data.keys())[23:]}
-            #     json_data = json.dumps(sliced_data)
-
-            #     # 소켓을 통해 데이터를 모든 클라이언트로 전송
-            #     socketio.emit('update_table', {'data': json_data}, namespace='/test', room=None, skip_sid=None)
-
-            #     last_time = data['Time']  # 마지막으로 받은 데이터의 Time 업데이트
-#############################################################################################################################
+###############################################################################################################################
             last_time = data['Time']
             db.commit()
 
