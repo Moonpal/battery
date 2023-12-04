@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Flask App</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+
+<body>
+    <div class="container mt-4">
+        <h2>Your Real-Time Data Table</h2>
+        <table class="table table-striped" id="data-table">
+            <tbody>
+                <!-- 여기에 실시간 데이터 행 추가 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Socket.IO 스크립트 추가 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <!-- 위에서 제공한 JavaScript 코드 추가 -->
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port + '/test');
+
+        // 실시간으로 데이터가 도착할 때마다 실행되는 이벤트 핸들러
+        socket.on('update_table', function (msg) {
+            var jsonData = JSON.parse(msg.data);
+            var table = document.getElementById("data-table").getElementsByTagName('tbody')[0];
+
+            // 새로운 행을 추가
+            var row = table.insertRow(table.rows.length);
+
+            // 데이터의 키를 기반으로 열 수만큼 셀을 생성
+            for (var key in jsonData) {
+                if (jsonData.hasOwnProperty(key)) {
+                    var cellIndex = row.cells.length;
+                    var cell = row.insertCell(cellIndex);
+                    cell.innerHTML = jsonData[key];
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
