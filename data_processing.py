@@ -120,12 +120,3 @@ def rolling_window_sequences(X, index, window_size, target_size, step_size,
       y_index.append(index[end])
       start = start + step_size
     return np.asarray(out_X), np.asarray(out_y), np.asarray(X_index), np.asarray(y_index)
-
-
-## 데이터 예측함수 predict
-# def predict(X):
-#   X = X.reshape((-1, shape[0], feat_dim)) # feat_dim : feature dimension (modified from 1: yeesj)
-#   z_ = encoder.predict(X)
-#   y_hat = generator.predict(z_)
-#   critic = critic_x.predict(X)
-#   return y_hat, critic
