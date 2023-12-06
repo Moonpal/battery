@@ -213,6 +213,10 @@ fake_gen_x = critic_x(x_gen_)
 fake_gen_z = critic_z(z_gen_)
 encoder_generator_model = Model([x_gen, z_gen], [fake_gen_x, fake_gen_z, x_gen_rec])
 
+### 가중치 모델 적용
+critic_x_model.load_weights('C:/Users/user/BusanDigitalAcademy/Battery_Project/critic_x_model.h5')
+critic_z_model.load_weights('C:/Users/user/BusanDigitalAcademy/Battery_Project/critic_z_model.h5')
+encoder_generator_model.load_weights('C:/Users/user/BusanDigitalAcademy/Battery_Project/encoder_generator_model.h5')
 
 ### 생성한 critic_x, critic_z, enc_gen layer의 loss를 계산하는 함수
 ##1)  critic_x_train_on_batch

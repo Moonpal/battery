@@ -174,6 +174,49 @@ def rolling_window_sequences(X, index, window_size, target_size, step_size,
 #     plt.show()
 
 ## anomalies 찾는 함수
+# def find_anomalies(gt, pred):
+#     anomalies = []
+#     anomaly_gt = []
+#     anomaly_pred = []
+#     length_anom = len(pred)
+
+#     anom_pred_init = 0  # inside a sequence or not
+#     anom_gt_init = 0  #
+
+#     for k in range(length_anom):
+#         if gt[k] == 1:
+#             if anom_gt_init == 0:  # Now beginning of an anomalous sequence.
+#                 anom_gt_begin = k
+#                 anom_gt_init = 1
+#             else:
+#                 anom_gt_end = k
+#                 if k == length_anom - 1:
+#                     anomaly_gt.append((anom_gt_begin, anom_gt_end))
+
+#         if gt[k] == 0 and anom_gt_init == 1:  # End of anom. sequence
+#             anom_gt_end = k - 1
+#             anomaly_gt.append((anom_gt_begin, anom_gt_end))
+#             anom_gt_init = 0
+
+#         if pred[k] == 1:
+#             if anom_pred_init == 0:  # Now beginning of an anomalous sequence.
+#                 anom_pred_begin = k
+#                 anom_pred_init = 1
+#             else:
+#                 anom_pred_end = k
+#                 if k == length_anom - 1:
+#                     anomaly_pred.append((anom_pred_begin, anom_pred_end))
+
+#         if pred[k] == 0 and anom_pred_init == 1:  # End of anom. sequence
+#             anom_pred_end = k - 1
+#             anomaly_pred.append((anom_pred_begin, anom_pred_end))
+#             anom_pred_init = 0
+
+#     anomalies = [anomaly_gt, anomaly_pred]
+#     return anomalies
+# ...
+
+# anomalies 찾는 함수
 def find_anomalies(gt, pred):
     anomalies = []
     anomaly_gt = []
@@ -184,7 +227,7 @@ def find_anomalies(gt, pred):
     anom_gt_init = 0  #
 
     for k in range(length_anom):
-        if gt[k] == 1:
+        if np.all(gt[k] == 1):
             if anom_gt_init == 0:  # Now beginning of an anomalous sequence.
                 anom_gt_begin = k
                 anom_gt_init = 1
@@ -193,12 +236,12 @@ def find_anomalies(gt, pred):
                 if k == length_anom - 1:
                     anomaly_gt.append((anom_gt_begin, anom_gt_end))
 
-        if gt[k] == 0 and anom_gt_init == 1:  # End of anom. sequence
+        if np.all(gt[k] == 0) and anom_gt_init == 1:  # End of anom. sequence
             anom_gt_end = k - 1
             anomaly_gt.append((anom_gt_begin, anom_gt_end))
             anom_gt_init = 0
 
-        if pred[k] == 1:
+        if np.all(pred[k] == 1):
             if anom_pred_init == 0:  # Now beginning of an anomalous sequence.
                 anom_pred_begin = k
                 anom_pred_init = 1
@@ -207,13 +250,14 @@ def find_anomalies(gt, pred):
                 if k == length_anom - 1:
                     anomaly_pred.append((anom_pred_begin, anom_pred_end))
 
-        if pred[k] == 0 and anom_pred_init == 1:  # End of anom. sequence
+        if np.all(pred[k] == 0) and anom_pred_init == 1:  # End of anom. sequence
             anom_pred_end = k - 1
             anomaly_pred.append((anom_pred_begin, anom_pred_end))
             anom_pred_init = 0
 
     anomalies = [anomaly_gt, anomaly_pred]
     return anomalies
+
 
 ## 시각화 함수
 def visualize_anomalies(anomalies, length_anom, X, Z_score1):

@@ -11,6 +11,11 @@ import pandas as pd
 import pymysql
 import json
 
+anomaly_file="C:/Users/user/OneDrive/바탕 화면/BDS 최종 프로젝트/Data3_전자부품(배터리팩) 품질보증 AI 데이터셋/Dataset_전자부품(배터리팩) 품질보증 AI 데이터셋/data/preprocessed/test/Test07_NG_dchg_Label.csv"
+known_anomalies = pd.read_csv(anomaly_file)
+anom_labels=known_anomalies['label']
+true0 = anom_labels
+
 app = Flask(__name__)
 socketio = SocketIO(app)
 anomaly = Anomaly()
@@ -79,14 +84,6 @@ def send_data():
                             print(f"An error occurred during prediction: {e}")
                             # 예외가 발생한 경우에도 초기화
                             y_hat, critic = None, None
-                    
-                    # print(X)
-                    # print(X.shape) # (10,10,3) 인데 predict(X) 의 X는 몇 shape가 들어가야함? -> (4584, 10, 3 ) 가능
-                    # predict 함수 내에서 예측 전에 로그 추가
-                    # print("Input to predict function:")
-                    # print(X)
-                    # print("Shape of input to predict function:")
-                    # print(X.shape)
 
 
                     # 예외가 발생하지 않은 경우에만 final_scores 계산
@@ -107,44 +104,28 @@ def send_data():
                             length_anom = len(pred)
 
                             gt = np.array(true)
-                            anomalies = find_anomalies(gt, pred)
-                            print(anomalies)
+                            # 배열의 모든 요소가 1인지 확인
+                            if gt.all() == 1:
+                                anomalies = find_anomalies(gt, pred)
+                            else:
+                                anomalies = None
+                            # # anomalies(이상치) 찾기
+                            # pred_length = len(final_scores)
+                            # pred_bin = [0] * pred_length
+                            # pred = np.array(pred_bin)
+
+                            # # length_anom 찾기
+                            # length_anom = len(pred)
+
+                            # gt = np.array(true)
+                            # anomalies = find_anomalies(gt, pred)
+                            # print(anomalies)
 
                             # 시각화 함수 호출
                             visualize_anomalies(anomalies, length_anom, X, Z_score1)
                     else:
                         # 예외가 발생하거나 데이터가 충분하지 않은 경우에 대한 처리
                         final_scores, true_index, true, predictions = None, None, None, None
-                    # 예외가 발생하지 않은 경우에만 final_scores 계산
-                    # if y_hat is not None and critic is not None:
-                    #     final_scores, true_index, true, predictions = anomaly.score_anomalies(X, y_hat, critic, X_index, comb="mult")
-                    # else:
-                    #     # 예외가 발생하거나 데이터가 충분하지 않은 경우에 대한 처리
-                    #     final_scores, true_index, true, predictions = None, None, None, None
-                                        
-                    # # final_scores, true_index, true, predictions = anomaly.score_anomalies(X, y_hat, critic, X_index, comb="mult")
-                    # # processed_df = pd.DataFrame(X)
-                    # # print(processed_df)
-                    # # z_score1 찾기
-                    # avg = np.average(final_scores)
-                    # sigma = math.sqrt(sum((final_scores-avg) * (final_scores-avg)) /len(final_scores))
-                    # Z_score1 = (final_scores-avg) / sigma
-
-                    # # anomalies(이상치) 찾기
-                    # pred_length =len(final_scores)
-                    # pred_bin=[0]*pred_length
-                    # pred = np.array(pred_bin)
-                    
-                    # # length_anom 찾기
-                    # length_anom =len(pred)
-
-                    # gt = np.array(true)
-                    # anomalies = find_anomalies(gt, pred)
-                    
-                    # # 시각화 함수 호출
-                    # visualize_anomalies(anomalies, length_anom, X, Z_score1)
-
-
 
                     # 전처리된 데이터를 JSON 형식으로 변환(고민해보기!)
                     json_data = processed_df.to_json(orient='records')
