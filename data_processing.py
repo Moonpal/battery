@@ -121,102 +121,8 @@ def rolling_window_sequences(X, index, window_size, target_size, step_size,
       start = start + step_size
     return np.asarray(out_X), np.asarray(out_y), np.asarray(X_index), np.asarray(y_index)
 
-# 주어진 코드를 함수로 변환
-# def plot_anomaly_detection(X, Z_score, anomalies, length_anom):
-#     register_matplotlib_converters()
-    
-#     if not isinstance(anomalies, list):
-#         anomalies = [anomalies]
-    
-#     fig, ax = plt.subplots(figsize=(30, 12))
-#     max_len = length_anom - 10
-#     time = range(max_len)
-#     Z_score2 = Z_score[:max_len]
-    
-#     X_signal = [X[kk, 1] for kk in range(max_len)]
-#     X_signal_2 = np.array(X_signal)
-    
-#     line1, = ax.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
-#     line2, = ax.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
-#     line3, = ax.plot(time, Z_score2, label='Z score')
-#     ax.legend(loc=0, fontsize=30)
-    
-#     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
-    
-#     def update(frame):
-#         nonlocal X_signal, X_signal_2
-#         X_signal.append(X[frame, 1])
-#         X_signal_2 = np.array(X_signal[-max_len:])
-        
-#         line1.set_ydata(3 * X_signal_2[:, 0])
-#         line2.set_ydata(3 * X_signal_2[:, 1])
-#         line3.set_ydata(Z_score[frame:min(frame + max_len, len(Z_score))])
-        
-#         for i, anomaly in enumerate(anomalies):
-#             if not isinstance(anomaly, list):
-#                 anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
-#             for _, anom in enumerate(anomaly):
-#                 t1 = anom[0]
-#                 t2 = anom[1]
-#                 ax.axvspan(t1, t2, color=colors[i], alpha=0.2)
-        
-#         ax.set_xlim([time[0], time[-1]])
-#         return line1, line2, line3
-    
-#     ani = FuncAnimation(fig, update, frames=range(len(X)), blit=False, interval=1000)
-    
-#     plt.title(' Test07_NG : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
-#     plt.ylabel('PCA1, PCA2, Z_score', size=30)
-#     plt.xlabel('Time', size=30)
-#     plt.xticks(size=26)
-#     plt.yticks(size=26)
-    
-#     plt.show()
 
 ## anomalies 찾는 함수
-# def find_anomalies(gt, pred):
-#     anomalies = []
-#     anomaly_gt = []
-#     anomaly_pred = []
-#     length_anom = len(pred)
-
-#     anom_pred_init = 0  # inside a sequence or not
-#     anom_gt_init = 0  #
-
-#     for k in range(length_anom):
-#         if gt[k] == 1:
-#             if anom_gt_init == 0:  # Now beginning of an anomalous sequence.
-#                 anom_gt_begin = k
-#                 anom_gt_init = 1
-#             else:
-#                 anom_gt_end = k
-#                 if k == length_anom - 1:
-#                     anomaly_gt.append((anom_gt_begin, anom_gt_end))
-
-#         if gt[k] == 0 and anom_gt_init == 1:  # End of anom. sequence
-#             anom_gt_end = k - 1
-#             anomaly_gt.append((anom_gt_begin, anom_gt_end))
-#             anom_gt_init = 0
-
-#         if pred[k] == 1:
-#             if anom_pred_init == 0:  # Now beginning of an anomalous sequence.
-#                 anom_pred_begin = k
-#                 anom_pred_init = 1
-#             else:
-#                 anom_pred_end = k
-#                 if k == length_anom - 1:
-#                     anomaly_pred.append((anom_pred_begin, anom_pred_end))
-
-#         if pred[k] == 0 and anom_pred_init == 1:  # End of anom. sequence
-#             anom_pred_end = k - 1
-#             anomaly_pred.append((anom_pred_begin, anom_pred_end))
-#             anom_pred_init = 0
-
-#     anomalies = [anomaly_gt, anomaly_pred]
-#     return anomalies
-# ...
-
-# anomalies 찾는 함수
 def find_anomalies(gt, pred):
     anomalies = []
     anomaly_gt = []
@@ -227,7 +133,8 @@ def find_anomalies(gt, pred):
     anom_gt_init = 0  #
 
     for k in range(length_anom):
-        if np.all(gt[k] == 1):
+        # if np.all(gt[k] == 1):
+        if gt[k] == 1:
             if anom_gt_init == 0:  # Now beginning of an anomalous sequence.
                 anom_gt_begin = k
                 anom_gt_init = 1
@@ -236,12 +143,13 @@ def find_anomalies(gt, pred):
                 if k == length_anom - 1:
                     anomaly_gt.append((anom_gt_begin, anom_gt_end))
 
-        if np.all(gt[k] == 0) and anom_gt_init == 1:  # End of anom. sequence
+        # if np.all(gt[k] == 0) and anom_gt_init == 1:  # End of anom. sequence
+        if gt[k] == 0 and anom_gt_init == 1:  # End of anom. sequence
             anom_gt_end = k - 1
             anomaly_gt.append((anom_gt_begin, anom_gt_end))
             anom_gt_init = 0
 
-        if np.all(pred[k] == 1):
+        if pred[k] == 1:
             if anom_pred_init == 0:  # Now beginning of an anomalous sequence.
                 anom_pred_begin = k
                 anom_pred_init = 1
@@ -258,13 +166,12 @@ def find_anomalies(gt, pred):
     anomalies = [anomaly_gt, anomaly_pred]
     return anomalies
 
-
-## 시각화 함수
+## 시각화 함수 - 수정본
 def visualize_anomalies(anomalies, length_anom, X, Z_score1):
     register_matplotlib_converters()
     np.random.seed(0)
     
-    if not isinstance(anomalies, list):
+    if anomalies is not None and not isinstance(anomalies, list):
         anomalies = [anomalies]
 
     fig = plt.figure(figsize=(30, 12))
@@ -290,16 +197,18 @@ def visualize_anomalies(anomalies, length_anom, X, Z_score1):
     plt.legend(loc=0, fontsize=30)
     print("length_anom, max_len:", length_anom, max_len)
     
-    colors = ['red'] + ['blue'] * (len(anomalies) - 1)
-    
-    for i, anomaly in enumerate(anomalies):
-        if not isinstance(anomaly, list):
-            anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+    # anomalies가 None이 아닌 경우에만 처리
+    if anomalies is not None:
+        colors = ['red'] + ['blue'] * (len(anomalies) - 1)
         
-        for _, anom in enumerate(anomaly):
-            t1 = anom[0]
-            t2 = anom[1]
-            plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+        for i, anomaly in enumerate(anomalies):
+            if anomaly is not None and not isinstance(anomaly, list):
+                anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+            
+            for _, anom in enumerate(anomaly):
+                t1 = anom[0]
+                t2 = anom[1]
+                plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
     
     plt.title(' Test07_NG : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
     plt.ylabel('PCA1, PCA2, Z_score', size=30)
@@ -309,3 +218,55 @@ def visualize_anomalies(anomalies, length_anom, X, Z_score1):
     plt.xlim([time[0], time[-1]])
     
     plt.show()
+
+
+## 시각화 함수
+# def visualize_anomalies(anomalies, length_anom, X, Z_score1):
+#     register_matplotlib_converters()
+#     np.random.seed(0)
+    
+#     if not isinstance(anomalies, list):
+#         anomalies = [anomalies]
+
+#     fig = plt.figure(figsize=(30, 12))
+#     ax = fig.add_subplot(111)
+    
+#     max_len = length_anom - 10
+#     time = range(max_len)
+#     Z_score2 = Z_score1[:max_len]
+#     X_signal = []
+
+#     for kk in range(max_len):
+#         X_signal.append(X[kk, 1])
+
+#     for kk in range(10):
+#         print(X[kk, 1])
+
+#     X_signal_2 = np.array(X_signal)
+    
+#     plt.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
+#     plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
+#     plt.plot(time, Z_score2, label='Z score')
+    
+#     plt.legend(loc=0, fontsize=30)
+#     print("length_anom, max_len:", length_anom, max_len)
+    
+#     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
+    
+#     for i, anomaly in enumerate(anomalies):
+#         if not isinstance(anomaly, list):
+#             anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+        
+#         for _, anom in enumerate(anomaly):
+#             t1 = anom[0]
+#             t2 = anom[1]
+#             plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+    
+#     plt.title(' Test07_NG : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
+#     plt.ylabel('PCA1, PCA2, Z_score', size=30)
+#     plt.xlabel('Time', size=30)
+#     plt.xticks(size=26)
+#     plt.yticks(size=26)
+#     plt.xlim([time[0], time[-1]])
+    
+#     plt.show()

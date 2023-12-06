@@ -100,27 +100,20 @@ def send_data():
                             pred_bin = [0] * pred_length
                             pred = np.array(pred_bin)
 
+                            # 실제 이상구간(Label Data 활용)
+                            true = []
+                            true = true0[: pred_length]
+                            gt = np.array(true)
+
                             # length_anom 찾기
                             length_anom = len(pred)
 
-                            gt = np.array(true)
                             # 배열의 모든 요소가 1인지 확인
                             if gt.all() == 1:
                                 anomalies = find_anomalies(gt, pred)
                             else:
                                 anomalies = None
-                            # # anomalies(이상치) 찾기
-                            # pred_length = len(final_scores)
-                            # pred_bin = [0] * pred_length
-                            # pred = np.array(pred_bin)
-
-                            # # length_anom 찾기
-                            # length_anom = len(pred)
-
-                            # gt = np.array(true)
-                            # anomalies = find_anomalies(gt, pred)
-                            # print(anomalies)
-
+                            
                             # 시각화 함수 호출
                             visualize_anomalies(anomalies, length_anom, X, Z_score1)
                     else:
