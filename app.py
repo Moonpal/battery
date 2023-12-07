@@ -10,6 +10,8 @@ from anomaly_detection import Anomaly
 import pandas as pd
 import pymysql
 import json
+import matplotlib
+
 
 anomaly_file="C:/Users/user/OneDrive/바탕 화면/BDS 최종 프로젝트/Data3_전자부품(배터리팩) 품질보증 AI 데이터셋/Dataset_전자부품(배터리팩) 품질보증 AI 데이터셋/data/preprocessed/test/Test07_NG_dchg_Label.csv"
 known_anomalies = pd.read_csv(anomaly_file)
@@ -54,7 +56,7 @@ def send_data():
             cursor.execute(query)
             # 가져온 데이터를 JSON 형식으로 변환
             data = cursor.fetchone()
-     
+
             if data:
                 # 데이터프레임으로 변환
                 df = pd.DataFrame([data])
@@ -64,16 +66,15 @@ def send_data():
 
                 # 원본 데이터프레임에 현재 데이터 누적
                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
-                # print(accumulated_df)
 
                 # 10개씩 주기적으로 diff_smooth + PCA 수행
                 if len(accumulated_df) >= 10 and len(accumulated_df) % 10 == 0:
                     processed_df = diff_smooth_df(accumulated_df.copy(), lags_n=0, diffs_n=0, smooth_n=0)
                     processed_df = do_pca(processed_df, 3)
-                    X, index = time_segments_aggregate(processed_df, interval=1,time_column='date')
+                    X, index = time_segments_aggregate(processed_df, interval=1, time_column='date')
                     X = SimpleImputer().fit_transform(X)
                     X = MinMaxScaler(feature_range=(-1, 1)).fit_transform(X)
-                    # X, y, X_index, y_index=rolling_window_sequences(X, index, window_size=10, target_size=1, step_size=1, target_column=0) # rolling_window_sequence를 적용하기 위해서는 10개가 만족해야하는 조건이 필요!!
+                    
                     # 초기화
                     y_hat, critic = None, None
                     if len(X) >= 10:
@@ -115,21 +116,30 @@ def send_data():
                                 anomalies = None
                             
                             # 시각화 함수 호출
-                            visualize_anomalies(anomalies, length_anom, X, Z_score1)
+                            image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1)
+
+                            # 이미지 파일의 경로를 클라이언트에 전송
+                            socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
+
+                            # 시각화 결과를 JSON 형식으로 변환
+                            json_data_visualization = {
+                                'anomalies': anomalies,
+                                'length_anom': length_anom,
+                                'X': X.tolist(),
+                                'Z_score1': Z_score1.tolist()
+                            }
+
+                            # 소켓을 통해 데이터를 모든 클라이언트로 전송
+                            socketio.emit('update_visualization', {'data': json_data_visualization}, namespace='/test', room=None, skip_sid=None)
+                            
                     else:
                         # 예외가 발생하거나 데이터가 충분하지 않은 경우에 대한 처리
                         final_scores, true_index, true, predictions = None, None, None, None
 
-                    # 전처리된 데이터를 JSON 형식으로 변환(고민해보기!)
-                    json_data = processed_df.to_json(orient='records')
-
-                    # 소켓을 통해 데이터를 모든 클라이언트로 전송
-                    socketio.emit('update_table', {'data': json_data}, namespace='/test', room=None, skip_sid=None)
-
             last_time = data['Time']
             db.commit()
 
-            # 1초간격으로 데이터 갱신
+            # 1초 간격으로 데이터 갱신
             socketio.sleep(1)
 
     except pymysql.Error as e:
@@ -137,6 +147,7 @@ def send_data():
 
     finally:
         cursor.close()
+
 
 # 백그라운드 스레드에서 데이터를 실시간으로 전송하는 함수 실행
 @socketio.on('connect', namespace='/test')
