@@ -83,11 +83,13 @@ class Anomaly(object):
     * epsilon 이상의 연속된 시퀀스의 수.
  """
  def _count_above(self, errors, epsilon):
-   above = errors > epsilon
-   total_above =len(errors[above])
+   above = errors > epsilon # 임계값을 초과하는 모든 오류 값 필터링
+   total_above =len(errors[above]) # 임계값을 초과하는 오류 총 개수 계산
+   
+   # 연속된 시퀀스 계산
    above = pd.Series(above)
-   shift = above.shift(1)
-   change = above != shift
+   shift = above.shift(1) # 시리즈를 한칸씩 이동 -> 이전 요소와 현재 요소를 비교
+   change = above != shift # 현재 값과 이동된 값이 다른 경우를 찾아 change에 저장
    total_consecutive = sum(above & change)
    return total_above, total_consecutive
 

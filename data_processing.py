@@ -135,18 +135,24 @@ def rolling_window_sequences(X, index, window_size, target_size, step_size,
 
 ## anomalies 찾는 함수
 def find_anomalies(gt, pred):
+    
+    # 변수 초기화
     anomalies = []
-    anomaly_gt = []
-    anomaly_pred = []
+    anomaly_gt = []  # 실제 이상구간
+    anomaly_pred = []  # 예측한 이상구간
     length_anom = len(pred)
 
-    anom_pred_init = 0  # inside a sequence or not
-    anom_gt_init = 0  #
+    # 이상구간 바깥 -> 0으로 표시
+    # 이상구간 내부 -> 1으로 표시
+    anom_pred_init = 0  
+    anom_gt_init = 0 
 
+    
     for k in range(length_anom):
-        # if np.all(gt[k] == 1):
-        if gt[k] == 1:
-            if anom_gt_init == 0:  # Now beginning of an anomalous sequence.
+        
+        # 실제 이상구간 탐지(anomaly_gt)
+        if gt[k] == 1: # 이상구간 시작되었을 때(label : 1 / gt_pred_init : 0)
+            if anom_gt_init == 0:
                 anom_gt_begin = k
                 anom_gt_init = 1
             else:
@@ -154,22 +160,22 @@ def find_anomalies(gt, pred):
                 if k == length_anom - 1:
                     anomaly_gt.append((anom_gt_begin, anom_gt_end))
 
-        # if np.all(gt[k] == 0) and anom_gt_init == 1:  # End of anom. sequence
-        if gt[k] == 0 and anom_gt_init == 1:  # End of anom. sequence
+        if gt[k] == 0 and anom_gt_init == 1: # 이상구간이 끝났을 때(label : 0 / gt_pred_init : 1)
             anom_gt_end = k - 1
             anomaly_gt.append((anom_gt_begin, anom_gt_end))
             anom_gt_init = 0
 
-        if pred[k] == 1:
-            if anom_pred_init == 0:  # Now beginning of an anomalous sequence.
-                anom_pred_begin = k
+        # 예측된 이상구간 탐지(anomaly_pred)
+        if pred[k] == 1: # 이상구간이 시작되었을 때(label : 1 / anom_pred_init : 0)
+            if anom_pred_init == 0: 
+                anom_pred_begin = k # 시작된 시점 K 기록
                 anom_pred_init = 1
             else:
                 anom_pred_end = k
                 if k == length_anom - 1:
-                    anomaly_pred.append((anom_pred_begin, anom_pred_end))
+                    anomaly_pred.append((anom_pred_begin, anom_pred_end)) # 이상구간(시작된 시점 K ~ 예측구간 전까지)
 
-        if np.all(pred[k] == 0) and anom_pred_init == 1:  # End of anom. sequence
+        if pred[k] == 0 and anom_pred_init == 1: # 이상구간이 끝났을 때(label : 0 / anom_pred_init : 1)
             anom_pred_end = k - 1
             anomaly_pred.append((anom_pred_begin, anom_pred_end))
             anom_pred_init = 0
@@ -179,7 +185,7 @@ def find_anomalies(gt, pred):
 
 ## 시각화 함수 
 def save_plot_to_file(anomalies, length_anom, X, Z_score1):
-    register_matplotlib_converters()##################################################################
+    register_matplotlib_converters()
     np.random.seed(0)
 
     if anomalies is not None and not isinstance(anomalies, list):
@@ -242,3 +248,7 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     plt.close(fig)
 
     return image_path
+
+def convert_dates_to_ordinal(df):
+    df['Time'] = pd.to_datetime(df['Time']).apply(lambda x: x.toordinal())
+    return df

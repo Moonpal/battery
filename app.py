@@ -13,7 +13,7 @@ import json
 import matplotlib
 
 
-anomaly_file="C:/Users/user/OneDrive/바탕 화면/BDS 최종 프로젝트/Data3_전자부품(배터리팩) 품질보증 AI 데이터셋/Dataset_전자부품(배터리팩) 품질보증 AI 데이터셋/data/preprocessed/test/Test07_NG_dchg_Label.csv"
+anomaly_file="C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv"
 known_anomalies = pd.read_csv(anomaly_file)
 anom_labels=known_anomalies['label']
 true0 = anom_labels
@@ -31,9 +31,130 @@ db = pymysql.connect(
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor
 )
+####################################################################################################
+# # 새로운 전역 변수로 누적된 DataFrame 설정
+# accumulated_df = pd.DataFrame()
 
+# # 데이터를 전송받는 함수 구축
+# def send_data():
+#     global accumulated_df
+
+#     try:
+#         cursor = db.cursor()
+
+#         # 처음에는 last_time을 None으로 설정하여 가장 처음에 받은 데이터의 시간으로 초기화
+#         last_time = None
+
+#         while True:
+#             # 데이터베이스에서 다음 데이터 가져오기
+#             if last_time is None:
+#                 query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 100"
+#                 # query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 1"
+#             else:
+#                 query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 100"
+#                 # query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 1"
+            
+#             # 쿼리문 실행
+#             cursor.execute(query)
+#             data = cursor.fetchone()
+
+#             if data:
+#                 # 데이터프레임으로 변환
+#                 df = pd.DataFrame([data])
+
+#                 # 여기에서 데이터를 슬라이싱하여 온도, 전압 데이터로 추출
+#                 sliced_df = df.iloc[:, 23:]
+
+#                 # 원본 데이터프레임에 현재 데이터 누적
+#                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
+
+#                 # 10개씩 주기적으로 diff_smooth + PCA 수행
+#                 # if len(accumulated_df) >= 10 and len(accumulated_df) % 10 == 0:
+#                 if len(accumulated_df) >= 100:
+#                     processed_df = diff_smooth_df(accumulated_df.copy(), lags_n=0, diffs_n=0, smooth_n=0)
+#                     processed_df = do_pca(processed_df, 3)
+#                     X, index = time_segments_aggregate(processed_df, interval=1, time_column='date')
+#                     X = SimpleImputer().fit_transform(X)
+#                     X = MinMaxScaler(feature_range=(-1, 1)).fit_transform(X)
+                    
+#                     # 초기화
+#                     y_hat, critic = None, None
+#                     # if len(X) >= 10:
+#                     if len(X) >= 100:
+#                         try:
+#                             X, y, X_index, y_index = rolling_window_sequences(X, index, window_size=10, target_size=1, step_size=1, target_column=0)
+#                             y_hat, critic = predict(X)
+#                         except Exception as e:
+#                             print(f"An error occurred during prediction: {e}")
+#                             # 예외가 발생한 경우에도 초기화
+#                             y_hat, critic = None, None
+
+
+#                     # 예외가 발생하지 않은 경우에만 final_scores 계산
+#                     if y_hat is not None and critic is not None:
+#                         final_scores, true_index, true, predictions = anomaly.score_anomalies(X, y_hat, critic, X_index, comb="mult")
+
+#                         if final_scores is not None:
+#                             avg = np.average(final_scores)
+#                             sigma = np.std(final_scores)
+#                             Z_score1 = (final_scores - avg) / sigma
+
+#                             # anomalies(이상치) 찾기
+#                             pred_length = len(final_scores)
+#                             pred_bin = [0] * pred_length
+#                             pred = np.array(pred_bin)
+
+#                             # 실제 이상구간(Label Data 활용)
+#                             true = []
+#                             true = true0[: pred_length]
+#                             gt = np.array(true)
+
+#                             # length_anom 찾기
+#                             length_anom = len(pred)
+
+#                             # 이상치 탐지 수행
+#                             anomalies = find_anomalies(gt, pred)
+#                             print(anomalies)
+                            
+#                             # 시각화 함수 호출
+#                             image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1)
+
+#                             # 이미지 파일의 경로를 클라이언트에 전송
+#                             socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
+                            
+#                     else:
+#                         # 예외가 발생하거나 데이터가 충분하지 않은 경우에 대한 처리
+#                         final_scores, true_index, true, predictions = None, None, None, None
+
+#             last_time = data['Time']
+#             db.commit()
+
+#             # 1초 간격으로 데이터 갱신
+#             socketio.sleep(0.001)
+
+#     except pymysql.Error as e:
+#         print(e)
+
+#     finally:
+#         cursor.close()
+
+#######################################################################################################
 # 새로운 전역 변수로 누적된 DataFrame 설정
 accumulated_df = pd.DataFrame()
+
+# 초기 데이터 로드 함수
+def load_initial_data():
+    global accumulated_df
+    try:
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4500")
+        initial_data = cursor.fetchall()
+        accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
+        accumulated_df = accumulated_df.iloc[:, 23:]
+    except pymysql.Error as e:
+        print(e)
+    finally:
+        cursor.close()
 
 # 데이터를 전송받는 함수 구축
 def send_data():
@@ -48,27 +169,29 @@ def send_data():
         while True:
             # 데이터베이스에서 다음 데이터 가져오기
             if last_time is None:
-                query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 1"
+                query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 100"
+                # query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 1"
             else:
-                query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 1"
+                query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 100"
+                # query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 1"
             
             # 쿼리문 실행
             cursor.execute(query)
-            # 가져온 데이터를 JSON 형식으로 변환
             data = cursor.fetchone()
 
             if data:
                 # 데이터프레임으로 변환
                 df = pd.DataFrame([data])
 
-                # 여기에서 데이터를 슬라이싱하여 원하는 열(24번째 열부터)까지 추출
+                # 여기에서 데이터를 슬라이싱하여 온도, 전압 데이터로 추출
                 sliced_df = df.iloc[:, 23:]
 
                 # 원본 데이터프레임에 현재 데이터 누적
                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
 
                 # 10개씩 주기적으로 diff_smooth + PCA 수행
-                if len(accumulated_df) >= 10 and len(accumulated_df) % 10 == 0:
+                # if len(accumulated_df) >= 10 and len(accumulated_df) % 10 == 0:
+                if len(accumulated_df) >= 100:
                     processed_df = diff_smooth_df(accumulated_df.copy(), lags_n=0, diffs_n=0, smooth_n=0)
                     processed_df = do_pca(processed_df, 3)
                     X, index = time_segments_aggregate(processed_df, interval=1, time_column='date')
@@ -77,7 +200,8 @@ def send_data():
                     
                     # 초기화
                     y_hat, critic = None, None
-                    if len(X) >= 10:
+                    # if len(X) >= 10:
+                    if len(X) >= 100:
                         try:
                             X, y, X_index, y_index = rolling_window_sequences(X, index, window_size=10, target_size=1, step_size=1, target_column=0)
                             y_hat, critic = predict(X)
@@ -109,28 +233,15 @@ def send_data():
                             # length_anom 찾기
                             length_anom = len(pred)
 
-                            # 배열의 모든 요소가 1인지 확인
-                            if gt.all() == 1:
-                                anomalies = find_anomalies(gt, pred)
-                            else:
-                                anomalies = None
+                            # 이상치 탐지 수행
+                            anomalies = find_anomalies(gt, pred)
+                            print(anomalies)
                             
                             # 시각화 함수 호출
                             image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1)
 
                             # 이미지 파일의 경로를 클라이언트에 전송
                             socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
-
-                            # 시각화 결과를 JSON 형식으로 변환
-                            json_data_visualization = {
-                                'anomalies': anomalies,
-                                'length_anom': length_anom,
-                                'X': X.tolist(),
-                                'Z_score1': Z_score1.tolist()
-                            }
-
-                            # 소켓을 통해 데이터를 모든 클라이언트로 전송
-                            socketio.emit('update_visualization', {'data': json_data_visualization}, namespace='/test', room=None, skip_sid=None)
                             
                     else:
                         # 예외가 발생하거나 데이터가 충분하지 않은 경우에 대한 처리
@@ -140,7 +251,7 @@ def send_data():
             db.commit()
 
             # 1초 간격으로 데이터 갱신
-            socketio.sleep(1)
+            socketio.sleep(0.001)
 
     except pymysql.Error as e:
         print(e)
@@ -148,6 +259,7 @@ def send_data():
     finally:
         cursor.close()
 
+load_initial_data()
 
 # 백그라운드 스레드에서 데이터를 실시간으로 전송하는 함수 실행
 @socketio.on('connect', namespace='/test')
