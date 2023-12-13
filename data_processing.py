@@ -4,15 +4,18 @@ from gan_models import *
 from flask_socketio import SocketIO
 from datetime import datetime
 from pandas.plotting import register_matplotlib_converters
+from anomaly_detection import Anomaly
 from flask import Flask
 import io
 import base64
 import matplotlib.pyplot as plt
+import seaborn as sns
 import os
 
 
 app = Flask(__name__)
 socketio = SocketIO(app)
+anomaly = Anomaly()
 
 ## 데이터 전처리 함수 1)
 # 차분함수 정의 - 데이터프레임이 주어지면 차이를 구하고, 평활화를 추가하여, 지정된 대로 지연되도록 사전 처리
@@ -132,6 +135,40 @@ def rolling_window_sequences(X, index, window_size, target_size, step_size,
       start = start + step_size
     return np.asarray(out_X), np.asarray(out_y), np.asarray(X_index), np.asarray(y_index)
 
+## 이상길이 찾는 함수
+def process_anomaly_detection(X, y_hat, critic, X_index):
+    anomaly_file = "C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv"
+    known_anomalies = pd.read_csv(anomaly_file)
+    final_scores, true_index, true, predictions = anomaly.score_anomalies(X, y_hat, critic, X_index, comb="mult")
+
+    if final_scores is None:
+        return None, None, None
+###########################################################################################################
+    final_scores = np.array(final_scores)
+    print(final_scores.shape)
+    anomalies = anomaly.find_anomalies(final_scores, true_index)
+    print(anomalies)
+
+    anom_labels = known_anomalies['label']
+    true0 = anom_labels
+    pred_length = len(final_scores)
+    avg, sigma = np.mean(final_scores), np.std(final_scores)
+    Z_score1 = (final_scores - avg) / sigma
+
+    pred_bin=[0]*pred_length
+    for i in range(len(anomalies)):
+      print( anomalies[i][0], anomalies[i][1])
+      for k in range(anomalies[i][0]-1, anomalies[i][1]):
+        pred_bin[k]=1
+
+    pred = np.array(pred_bin)
+    true = []
+    true = true0[: pred_length]
+    gt = np.array(true)
+
+    anomalies = find_anomalies(gt, pred)
+
+    return anomalies, pred_length, X, Z_score1
 
 ## anomalies 찾는 함수
 def find_anomalies(gt, pred):
@@ -206,7 +243,9 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     fig = plt.figure(figsize=(30, 12))
     ax = fig.add_subplot(111)
     
-    max_len = length_anom - 10
+    # windsize 10
+    # max_len = length_anom - 10
+    max_len = length_anom - 100
     time = range(max_len)
     Z_score2 = Z_score1[:max_len]
     X_signal = []
@@ -219,23 +258,33 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     plt.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
     plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
     plt.plot(time, Z_score2, label='Z score')
-    
     plt.legend(loc=0, fontsize=30)
     print("length_anom, max_len:", length_anom, max_len)
     
     # anomalies가 None이 아닌 경우에만 처리
-    if anomalies is not None:
-        colors = ['red'] + ['blue'] * (len(anomalies) - 1)
+    # if anomalies is not None:
+    #     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
         
-        for i, anomaly in enumerate(anomalies):
-            if anomaly is not None and not isinstance(anomaly, list):
-                anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+    #     for i, anomaly in enumerate(anomalies):
+    #         if anomaly is not None and not isinstance(anomaly, list):
+    #             anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
             
-            for _, anom in enumerate(anomaly):
-                t1 = anom[0]
-                t2 = anom[1]
-                plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+    #         for _, anom in enumerate(anomaly):
+    #             t1 = anom[0]
+    #             t2 = anom[1]
+    #             plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+    colors = ['red'] + ['blue'] * (len(anomalies) - 1)
     
+    for i, anomaly in enumerate(anomalies):
+        if anomaly is not None and not isinstance(anomaly, list):
+            anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+        
+        for _, anom in enumerate(anomaly):
+            t1 = anom[0]
+            t2 = anom[1]
+            plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+    
+
     plt.title(' Test07_NG : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
     plt.ylabel('PCA1, PCA2, Z_score', size=30)
     plt.xlabel('Time', size=30)
@@ -249,6 +298,40 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
 
     return image_path
 
-def convert_dates_to_ordinal(df):
-    df['Time'] = pd.to_datetime(df['Time']).apply(lambda x: x.toordinal())
-    return df
+## 전압
+def save_vol_plot_to_file(vol_df):
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    folder_name = os.path.join('static_vol', current_time)
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+    image_path = os.path.join(folder_name, 'plot.png')
+
+    fig, ax = plt.subplots(figsize=(30, 12))
+    sns.lineplot(data=vol_df, ax=ax)
+    ax.set_title('Voltage Data Over Time')
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Voltage')
+    ax.legend(loc='upper left')
+    fig.savefig(image_path)
+    plt.close(fig)
+
+    return image_path
+
+## 온도
+def save_tem_plot_to_file(tem_df):
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    folder_name = os.path.join('static_tem', current_time)
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+    image_path = os.path.join(folder_name, 'plot.png')
+
+    fig, ax = plt.subplots(figsize=(30, 12))
+    sns.lineplot(data=tem_df, ax=ax)
+    ax.set_title('Temperature Data Over Time')
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Temperature')
+    ax.legend(loc='upper left')
+    fig.savefig(image_path)
+    plt.close(fig)
+
+    return image_path

@@ -429,6 +429,82 @@ class Anomaly(object):
       print("score", score)
       anomalies.append([index[int(start)], index[int(stop)], score])
     return anomalies
+################################################################################
+# find_anomalies 함수 수정
+ # 1번 실험
+#  def find_anomalies(self, errors, index, z_range=(0, 10), window_size=None,
+#                    window_size_portion=0.1, window_step_size=None,
+#                    window_step_size_portion=0.05, min_percent=0.1,
+#                    anomaly_padding=50, lower_threshold=False,
+#                    fixed_threshold=True):
+ 
+#  # 2번 실험 더 넓은 z_range(XXXXXXXXXXXXXXXXXX)
+#  # z_range를 줄임으로써, 이상치를 탐지하는 민감도를 낮춥니다.
+#  # window_size_portion과 window_step_size_portion을 줄여 더 작은 윈도우에서 탐지를 수행합니다. (X)
+# #  def find_anomalies(self, errors, index, z_range=(0, 5), window_size=None,
+# #                    window_size_portion=0.1, window_step_size=None,
+# #                    window_step_size_portion=0.01, min_percent=0.1,
+# #                    anomaly_padding=50, lower_threshold=False,
+# #                    fixed_threshold=True):
+
+# # 3번 실험 더 작은 윈도우 크기와 스템 사이즈
+# #  def find_anomalies(self, errors, index, z_range=(0, 10), window_size=None,
+# #                    window_size_portion=0.02, window_step_size=None,
+# #                    window_step_size_portion=0.005, min_percent=0.1,
+# #                    anomaly_padding=50, lower_threshold=False,
+# #                    fixed_threshold=True):
+    
+# # 4번 실험 # 더 높은 이상치 패딩 anomaly_padding을 늘려서, 각 이상치 주변의 데이터 포인트를 더 많이 포함시킵니다
+# #  def find_anomalies(self, errors, index, z_range=(0, 10), window_size=None,
+# #                    window_size_portion=0.1, window_step_size=None,
+# #                    window_step_size_portion=0.05, min_percent=0.1,
+# #                    anomaly_padding=100, lower_threshold=True,
+# #                    fixed_threshold=True):
+
+# # 5번 실험 하한 임계값 활성화 - 각 윈도우마다 동적으로 임계값을 설정
+# #  def find_anomalies(self, errors, index, z_range=(0, 10), window_size=None,
+# #                    window_size_portion=0.1, window_step_size=None,
+# #                    window_step_size_portion=0.05, min_percent=0.1,
+# #                    anomaly_padding=50, lower_threshold=False,
+# #                    fixed_threshold=False):
+    # 데이터 양에 따라 윈도우 크기와 스텝 사이즈를 동적으로 조정
+    # window_size = int(len(errors) * window_size_portion) if window_size is None else window_size
+    # window_step_size = int(window_size * window_step_size_portion) if window_step_size is None else window_step_size
+
+    # window_start = 0
+    # sequences = list()
+    
+    # while window_start + window_size <= len(errors):
+    #     window_end = window_start + window_size
+    #     window = errors[window_start:window_end]
+
+    #     # 현재 윈도우에서 이상치 시퀀스 탐지
+    #     window_sequences = self._find_window_sequences(window, z_range, anomaly_padding,
+    #                                                    min_percent, window_start, fixed_threshold)
+    #     sequences.extend(window_sequences)
+
+    #     if lower_threshold:
+    #         # 오류 시퀀스를 평균값 기준으로 반전시키고, 반전된 시퀀스에서도 이상치 탐지
+    #         mean = window.mean()
+    #         inverted_window = mean - (window - mean)
+    #         inverted_window_sequences = self._find_window_sequences(inverted_window, z_range, anomaly_padding,
+    #                                                                 min_percent, window_start, fixed_threshold)
+    #         sequences.extend(inverted_window_sequences)
+
+    #     window_start += window_step_size
+
+    # # 중복되거나 겹치는 이상치 시퀀스 병합
+    # sequences = self._merge_sequences(sequences)
+    
+    # # 최종 이상치 정보 생성
+    # anomalies = []
+    # for start, stop, score in sequences:
+    #     anomalies.append([index[int(start)], index[int(stop)], score])
+
+    # return anomalies
+
+
+
 
   ## 이상치_함수_11 : _compute_critic_score(self, critics, smooth_window):
  """이상 점수 배열을 계산
