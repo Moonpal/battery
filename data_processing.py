@@ -5,6 +5,7 @@ from flask_socketio import SocketIO
 from datetime import datetime
 from pandas.plotting import register_matplotlib_converters
 from anomaly_detection import Anomaly
+# from anomaly_detection import _fixed_threshold
 from flask import Flask
 import io
 import base64
@@ -168,7 +169,7 @@ def process_anomaly_detection(X, y_hat, critic, X_index):
 
     anomalies = find_anomalies(gt, pred)
 
-    return anomalies, pred_length, X, Z_score1
+    return anomalies, pred_length, X, Z_score1, final_scores
 
 ## anomalies 찾는 함수
 def find_anomalies(gt, pred):
@@ -220,7 +221,8 @@ def find_anomalies(gt, pred):
     anomalies = [anomaly_gt, anomaly_pred]
     return anomalies
 
-## 시각화 함수 
+
+## 기본 이상치 탐지 그래프 그리기
 def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     register_matplotlib_converters()
     np.random.seed(0)
@@ -261,18 +263,6 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     plt.legend(loc=0, fontsize=30)
     print("length_anom, max_len:", length_anom, max_len)
     
-    # anomalies가 None이 아닌 경우에만 처리
-    # if anomalies is not None:
-    #     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
-        
-    #     for i, anomaly in enumerate(anomalies):
-    #         if anomaly is not None and not isinstance(anomaly, list):
-    #             anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
-            
-    #         for _, anom in enumerate(anomaly):
-    #             t1 = anom[0]
-    #             t2 = anom[1]
-    #             plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
     
     for i, anomaly in enumerate(anomalies):
@@ -297,6 +287,149 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     plt.close(fig)
 
     return image_path
+## fixed_anomalies를 활용한 시각화 그리기
+# def save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores):
+#     anomaly = Anomaly()
+#     # fixed_threshold 계산중
+#     fixed_threshold = anomaly._fixed_threshold(final_scores)
+    
+#     register_matplotlib_converters()
+#     np.random.seed(0)
+
+#     if anomalies is not None and not isinstance(anomalies, list):
+#         anomalies = [anomalies]
+
+#     # 현재 날짜 및 시간을 기반으로 폴더 이름 생성
+#     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = os.path.join('static', current_time)
+
+#     # 폴더가 없으면 생성
+#     if not os.path.exists(folder_name):
+#         os.makedirs(folder_name)
+
+#     # 결과 이미지 파일의 경로 설정
+#     image_path = os.path.join(folder_name, 'plot.png')
+
+#     # 결과를 이미지 파일로 저장
+#     fig = plt.figure(figsize=(30, 12))
+#     ax = fig.add_subplot(111)
+    
+#     # windsize 10
+#     # max_len = length_anom - 10
+#     max_len = length_anom - 100
+#     time = range(max_len)
+#     Z_score2 = Z_score1[:max_len]
+#     X_signal = []
+
+#     for kk in range(max_len):
+#         X_signal.append(X[kk, 1])
+
+#     X_signal_2 = np.array(X_signal)
+    
+#     # 임계값을 그래프에 표시
+#     plt.axhline(y=fixed_threshold, color='green', linestyle='--', label='Threshold')
+#     plt.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
+#     plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
+#     plt.plot(time, Z_score2, label='Z score')
+#     plt.legend(loc=0, fontsize=30)
+#     print("length_anom, max_len:", length_anom, max_len)
+    
+#     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
+    
+#     for i, anomaly in enumerate(anomalies):
+#         if anomaly is not None and not isinstance(anomaly, list):
+#             anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+        
+#         for _, anom in enumerate(anomaly):
+#             t1 = anom[0]
+#             t2 = anom[1]
+#             plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+    
+
+#     plt.title(' Test07_NG : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
+#     plt.ylabel('PCA1, PCA2, Z_score', size=30)
+#     plt.xlabel('Time', size=30)
+#     plt.xticks(size=26)
+#     plt.yticks(size=26)
+#     plt.xlim([time[0], time[-1]])
+
+#     # 결과를 이미지 파일로 저장
+#     fig.savefig(image_path)
+#     plt.close(fig)
+
+#     return image_path
+
+## find_threshold를 활용한 시각화 그리기
+# def save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores):
+#     anomaly = Anomaly()
+#     # fixed_threshold 계산중
+#     not_fixed_threshold = anomaly._find_threshold(final_scores, z_range = (0,10))
+    
+#     register_matplotlib_converters()
+#     np.random.seed(0)
+
+#     if anomalies is not None and not isinstance(anomalies, list):
+#         anomalies = [anomalies]
+
+#     # 현재 날짜 및 시간을 기반으로 폴더 이름 생성
+#     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = os.path.join('static', current_time)
+
+#     # 폴더가 없으면 생성
+#     if not os.path.exists(folder_name):
+#         os.makedirs(folder_name)
+
+#     # 결과 이미지 파일의 경로 설정
+#     image_path = os.path.join(folder_name, 'plot.png')
+
+#     # 결과를 이미지 파일로 저장
+#     fig = plt.figure(figsize=(30, 12))
+#     ax = fig.add_subplot(111)
+    
+#     # windsize 10
+#     # max_len = length_anom - 10
+#     max_len = length_anom - 100
+#     time = range(max_len)
+#     Z_score2 = Z_score1[:max_len]
+#     X_signal = []
+
+#     for kk in range(max_len):
+#         X_signal.append(X[kk, 1])
+
+#     X_signal_2 = np.array(X_signal)
+    
+#     # 임계값을 그래프에 표시
+#     plt.axhline(y=not_fixed_threshold, color='green', linestyle='--', label='Threshold')
+#     plt.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
+#     plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
+#     plt.plot(time, Z_score2, label='Z score')
+#     plt.legend(loc=0, fontsize=30)
+#     print("length_anom, max_len:", length_anom, max_len)
+    
+#     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
+    
+#     for i, anomaly in enumerate(anomalies):
+#         if anomaly is not None and not isinstance(anomaly, list):
+#             anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+        
+#         for _, anom in enumerate(anomaly):
+#             t1 = anom[0]
+#             t2 = anom[1]
+#             plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+    
+
+#     plt.title(' Test07_NG : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
+#     plt.ylabel('PCA1, PCA2, Z_score', size=30)
+#     plt.xlabel('Time', size=30)
+#     plt.xticks(size=26)
+#     plt.yticks(size=26)
+#     plt.xlim([time[0], time[-1]])
+
+#     # 결과를 이미지 파일로 저장
+#     fig.savefig(image_path)
+#     plt.close(fig)
+
+#     return image_path
 
 ## 전압
 def save_vol_plot_to_file(vol_df):

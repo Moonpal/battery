@@ -106,13 +106,6 @@ def send_data():
     
                 # 원본 데이터프레임에 현재 데이터 누적
                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
-                # vol_df = pd.concat([vol_acc_df, vol_df], ignore_index=True)
-                # tem_acc_df = pd.concat([tem_acc_df, tem_df], ignore_index=True)
-                
-
-                # 이미지 파일의 경로를 클라이언트에 전송 -> 가장 아래로 변경
-                # socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
-                # socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
 
                 # 10개씩 주기적으로 diff_smooth + PCA 수행
                 if len(accumulated_df) >= 10 and len(accumulated_df) % 10 == 0:
@@ -141,19 +134,20 @@ def send_data():
 
                     # 예외가 발생하지 않은 경우에만 final_scores 계산
                     if y_hat is not None and critic is not None:
-                        anomalies, length_anom, X, Z_score1 = process_anomaly_detection(X, y_hat, critic, X_index)
+                        anomalies, length_anom, X, Z_score1, final_scores = process_anomaly_detection(X, y_hat, critic, X_index)
+                        
+                        # fixed_threshold 계산중
+                        # fixed_threshold = anomaly._fixed_threshold(final_scores)
                         if anomalies is not None:
 
                             # 전압,온도 데이터 추출
                             vol_df = accumulated_df.iloc[:,:176]
                             tem_df = accumulated_df.iloc[:,176:,]
-                            print(vol_df)
-                            print(tem_df)
-
                             
                             # 시각화 함수 호출
                             image_path_vol = save_vol_plot_to_file(vol_df)
                             image_path_tem = save_tem_plot_to_file(tem_df)
+                            # image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores)
                             image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1)
                             
                             # 이미지 파일의 경로를 클라이언트에 전송
