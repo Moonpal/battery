@@ -20,7 +20,7 @@ arguments=collections.namedtuple('Args',
  'signal_file timest_form anomaly_file mode aggregate_interval regate_interval')
 args=arguments(signal_file='/content/drive/MyDrive/충방전 데이터파일/data/raw_data/test/Test07_NG_dchg.csv',
       timest_form=0,
-      anomaly_file='"C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv"',
+      anomaly_file='C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv',
       mode='predict',
       aggregate_interval=1,
       regate_interval=1)
@@ -53,18 +53,18 @@ accumulated_df = pd.DataFrame()
 # tem_acc_df = pd.DataFrame()
 
 # 초기 데이터 로드 함수
-# def load_initial_data():
-#     global accumulated_df
-#     try:
-#         cursor = db.cursor()
-#         cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4300")
-#         initial_data = cursor.fetchall()
-#         accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
-#         accumulated_df = accumulated_df.iloc[:, 23:]
-#     except pymysql.Error as e:
-#         print(e)
-#     finally:
-#         cursor.close()
+def load_initial_data():
+    global accumulated_df
+    try:
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4400")
+        initial_data = cursor.fetchall()
+        accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
+        accumulated_df = accumulated_df.iloc[:, 23:]
+    except pymysql.Error as e:
+        print(e)
+    finally:
+        cursor.close()
 
 # 데이터를 전송받는 함수 구축
 def send_data():
@@ -169,7 +169,7 @@ def send_data():
             db.commit()
 
             # 1초 간격으로 데이터 갱신
-            socketio.sleep(0.1)
+            socketio.sleep(0.01)
 
     except pymysql.Error as e:
         print(e)
@@ -177,7 +177,7 @@ def send_data():
     finally:
         cursor.close()
 
-# load_initial_data()
+load_initial_data()
 
 # 백그라운드 스레드에서 데이터를 실시간으로 전송하는 함수 실행
 @socketio.on('connect', namespace='/test')

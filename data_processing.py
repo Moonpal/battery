@@ -301,36 +301,39 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
 ## 전압
 def save_vol_plot_to_file(vol_df):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = os.path.join('static_vol', current_time)
+    folder_name = os.path.join('static', 'static_vol', current_time)
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
     image_path = os.path.join(folder_name, 'plot.png')
 
     fig, ax = plt.subplots(figsize=(30, 12))
-    sns.lineplot(data=vol_df, ax=ax)
+    for column in vol_df.columns:
+        ax.plot(vol_df.index, vol_df[column], label=column)
     ax.set_title('Voltage Data Over Time')
     ax.set_xlabel('Time')
     ax.set_ylabel('Voltage')
-    ax.legend(loc='upper left')
+    # ax.legend(loc='upper left')
     fig.savefig(image_path)
     plt.close(fig)
 
     return image_path
 
+
 ## 온도
 def save_tem_plot_to_file(tem_df):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = os.path.join('static_tem', current_time)
+    folder_name = os.path.join('static', 'static_tem', current_time)
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
     image_path = os.path.join(folder_name, 'plot.png')
 
     fig, ax = plt.subplots(figsize=(30, 12))
-    sns.lineplot(data=tem_df, ax=ax)
+    for column in tem_df.columns:
+        ax.plot(tem_df.index, tem_df[column], label=column)
     ax.set_title('Temperature Data Over Time')
     ax.set_xlabel('Time')
     ax.set_ylabel('Temperature')
-    ax.legend(loc='upper left')
+    # ax.legend(loc='upper left')
     fig.savefig(image_path)
     plt.close(fig)
 
