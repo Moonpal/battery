@@ -1,4 +1,6 @@
 __pycache__/
 Battery/Lib/site-packages/
 static/
+static_vol/
+static_tem/
 bootstrap/
