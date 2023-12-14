@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>공정분석</title>
+    <title>분석 시작 페이지</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <style>
         .container {
@@ -32,7 +32,7 @@
     <div class="container"></div>
     <h2>Your Real-Time Data Table</h2>
 
-    
+
     <!-- 2)이미지를 표시할 엘리먼트 추가 -->
     <div class="left-side">
         <!-- 기존에 있는 실시간 업데이트 이미지 -->
@@ -53,6 +53,9 @@
 
     <!-- 페이지 내용을 담는 컨테이너 끝 -->
 
+
+    <!-- 분석 시작 버튼 추가 -->
+    <button id="start-analysis" onclick="startAnalysis()">분석 시작</button>
 
     <!-- Socket.IO 스크립트 추가 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
@@ -117,10 +120,27 @@
             socket.on(event, createEventHandler(event));
         }
 
-
         // 클라이언트가 페이지를 로드할 때 서버에게 플로팅된 이미지 요청
         socket.emit('request_plot');
+
+        // 파란색 그래프 감지 이벤트 리스너 추가
+        socket.on('blue_graph_detected', function () {
+            console.log("Blue graph detected");  // 이벤트 수신 로그
+            window.location.href = '/new_page';
+        });
+
+        // 분석 시작 함수
+        function startAnalysis() {
+            fetch('/start_analysis', { method: 'POST' })
+                .then(response => {
+                    if (response.ok) {
+                        console.log("분석 시작됨");
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
     </script>
+
 </body>
 
 </html>

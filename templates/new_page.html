@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- 필요한 CSS 및 JavaScript 추가 -->
+</head>
+
+<body>
+    <button onclick="resumeData()">데이터 전송 재개</button>
+    <button onclick="cancelData()">데이터 전송 취소</button>
+
+    <script>
+        function resumeData() {
+            fetch('/resume_data', { method: 'GET' }).then(response => {
+                if (response.ok) {
+                    // 데이터 전송 재개가 성공적으로 수행됐을 때의 처리
+                    // 예: 페이지 리로드
+                    window.history.back();
+                } else {
+                    // 실패했을 때의 처리
+                }
+            });
+        }
+
+        function cancelData() {
+            fetch('/cancel_data').then(response => {
+                // 필요한 처리
+            });
+        }
+    </script>
+</body>
+
+</html>

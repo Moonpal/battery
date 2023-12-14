@@ -226,6 +226,9 @@ def find_anomalies(gt, pred):
 def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     register_matplotlib_converters()
     np.random.seed(0)
+    
+    # 파란색 배경이 있는지 확인하는 플래그############################################
+    blue_background_detected = False
 
     if anomalies is not None and not isinstance(anomalies, list):
         anomalies = [anomalies]
@@ -273,9 +276,13 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
             t1 = anom[0]
             t2 = anom[1]
             plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+
+            # 파란색 배경 감지 확인#########################################
+            if colors[i] == 'blue':
+                blue_background_detected = True
     
 
-    plt.title(' Test07_NG : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
+    plt.title(' Test03_OK_chg : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
     plt.ylabel('PCA1, PCA2, Z_score', size=30)
     plt.xlabel('Time', size=30)
     plt.xticks(size=26)
@@ -286,8 +293,15 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     fig.savefig(image_path)
     plt.close(fig)
 
-    return image_path
-## fixed_anomalies를 활용한 시각화 그리기
+    # 파란색 배경이 감지되면 'stop' 상태와 함께 이미지 경로 반환
+    if blue_background_detected:
+        return image_path, 'stop'
+    else:
+        return image_path, 'continue'
+    # return image_path
+
+
+## 2) fixed_anomalies를 활용한 시각화 그리기
 # def save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores):
 #     anomaly = Anomaly()
 #     # fixed_threshold 계산중
@@ -359,11 +373,14 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
 
 #     return image_path
 
+# 오차함수 계싼
+# def calculate_errors_at_t(t, z_scores):
+#     # t 시간에서의 Z 점수 반환
+#     return z_scores[t]
+
 ## find_threshold를 활용한 시각화 그리기
 # def save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores):
-#     anomaly = Anomaly()
-#     # fixed_threshold 계산중
-#     not_fixed_threshold = anomaly._find_threshold(final_scores, z_range = (0,10))
+    
     
 #     register_matplotlib_converters()
 #     np.random.seed(0)
@@ -398,8 +415,18 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
 
 #     X_signal_2 = np.array(X_signal)
     
+#     anomaly = Anomaly()
+
+#     threshold = []
+#     for t in range(max_len):
+#         # fixed_threshold 계산중 -> z_range()에 
+#         # 각 시간 t에 대한 오차 데이터 계산
+#         # errors_at_t = calculate_errors_at_t(t, Z_score2)  # 이 부분은 실제 오차 계산 방식에 따라 수정 필요
+#         thresholds = anomaly._find_threshold(Z_score2, z_range = (0,10))
+#         threshold.append(thresholds)
+
 #     # 임계값을 그래프에 표시
-#     plt.axhline(y=not_fixed_threshold, color='green', linestyle='--', label='Threshold')
+#     plt.plot(time, threshold, color='green', linestyle='--', label='Threshold')
 #     plt.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
 #     plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
 #     plt.plot(time, Z_score2, label='Z score')

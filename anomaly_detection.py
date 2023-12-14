@@ -388,7 +388,7 @@ class Anomaly(object):
     window_size_portion=None, window_step_size=None,
     window_step_size_portion=None, min_percent=0.1,
     anomaly_padding=50, lower_threshold=False,
-    fixed_threshold=True):
+    fixed_threshold=False):
     window_size = window_size or len(errors)
     if window_size_portion:
       window_size = np.ceil(len(errors) * window_size_portion).astype('int')
