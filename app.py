@@ -1,4 +1,5 @@
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, session, request
+from flask_session import Session
 from flask_socketio import SocketIO
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
@@ -11,16 +12,16 @@ from keras.models import Model
 from keras.layers import Input
 from keras.optimizers import Adam
 
-
 import pandas as pd
-import pymysql
+import pymysql  
+import threading
 
 ## arguments 정의
 arguments=collections.namedtuple('Args',
  'signal_file timest_form anomaly_file mode aggregate_interval regate_interval')
 args=arguments(signal_file='/content/drive/MyDrive/충방전 데이터파일/data/raw_data/test/Test07_NG_dchg.csv',
       timest_form=0,
-      anomaly_file='C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test03_OK_chg_Label.csv',
+      anomaly_file='C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv',
       mode='predict',
       aggregate_interval=1,
       regate_interval=1)
@@ -43,6 +44,17 @@ args=arguments(signal_file='/content/drive/MyDrive/충방전 �
 #########################################################################################################################
 app = Flask(__name__)
 socketio = SocketIO(app)
+
+# 세션 설정
+# app.config['SESSION_TYPE'] = 'filesystem'  # 세션을 파일 시스템에 저장 (다른 옵션도 가능)
+# app.config['SESSION_PERMANENT'] = True  # 브라우저를 닫아도 세션 유지
+# app.config['SESSION_KEY_PREFIX'] = 'Moonpal'  # 세션 키 접두사 (고유하게 설정)
+
+# # 추가된 세션 설정
+# app.config['SECRET_KEY'] = os.urandom(24)  # 보안을 위한 시크릿 키 설정
+# app.config['SESSION_USE_SIGNER'] = True  # 세션 데이터 서명 활성화
+
+Session(app)
 
 # 전역 변수로 데이터 전송 상태 관리
 data_transfer_status = 'paused'  # 초기 상태는 중단
@@ -68,9 +80,11 @@ accumulated_df = pd.DataFrame()
 # 초기 데이터 로드 함수
 def load_initial_data():
     global accumulated_df
+    global data_transfer_status
+
     try:
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 700")
+        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 3500")
         initial_data = cursor.fetchall()
         accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
         accumulated_df = accumulated_df.iloc[:, 23:]
@@ -81,6 +95,7 @@ def load_initial_data():
 
 # 데이터를 전송받는 함수 구축
 def send_data():
+    global last_data_point
     global accumulated_df
     global blue_graph_detected
 
@@ -93,12 +108,12 @@ def send_data():
         while True:
             # 데이터베이스에서 다음 데이터 가져오기
             if last_time is None:
-                query = "SELECT * FROM test03_ok_chg ORDER BY Time ASC LIMIT 10"
+                query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 10"
                 # query = "SELECT * FROM test08_ng_chg ORDER BY Time ASC LIMIT 10"
                 # query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 1"
             else:
                 # query = f"SELECT * FROM test08_ng_chg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
-                query = f"SELECT * FROM test03_ok_chg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
+                query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
             
             # 쿼리문 실행
             cursor.execute(query)
@@ -118,6 +133,11 @@ def send_data():
     
                 # 원본 데이터프레임에 현재 데이터 누적
                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
+
+                # # last_data_point 업데이트
+                # if not accumulated_df.empty:
+                #     last_data_point = accumulated_df.iloc[-1]['Time']
+                #     session['last_data_point'] = last_data_point
 
                 # 10개씩 주기적으로 diff_smooth + PCA 수행
                 if len(accumulated_df) >= 10 and len(accumulated_df) % 10 == 0:
@@ -169,6 +189,7 @@ def send_data():
                                 data_transfer_status = 'paused'
                                 blue_graph_detected = True
                                 # 파란색 그래프 감지 이벤트를 클라이언트에게 발송
+                                socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
                                 socketio.emit('blue_graph_detected', namespace='/test')
                                 break
                             elif status == 'continue':
@@ -195,6 +216,15 @@ def send_data():
 
 load_initial_data()
 
+def start_data_transfer_thread():
+    global data_transfer_status
+    data_transfer_status = 'running'
+
+    # send_data 함수를 주기적으로 실행하는 스레드 시작
+    data_thread = threading.Thread(target=send_data)
+    data_thread.daemon = True
+    data_thread.start()
+
 @app.route('/')
 def index():
     if blue_background_detected:
@@ -205,6 +235,12 @@ def index():
 def handle_blue_graph_detected():
     print("Blue graph detected")  # 이벤트 발생 로그
     socketio.emit('blue_graph_detected', namespace='/test')  # 클라이언트에게 이벤트 전송
+# blue_graph_detected 수정본
+# @socketio.on('blue_graph_detected', namespace='/test')
+# def handle_blue_graph_detected():
+#     global blue_background_detected
+#     blue_background_detected = True
+#     socketio.emit('blue_graph_detected', namespace='/test')
 
 @app.route('/start_analysis', methods=['POST'])
 def start_analysis():
@@ -218,22 +254,40 @@ def new_page():
     # 파란색 그래프 감지 시 리디렉션되는 페이지
     return render_template('new_page.html')
 
-@app.route('/resume_data')
+# @app.route('/resume_data')
 def resume_data():
-    global data_transfer_status
-    data_transfer_status = 'running'
-    return redirect(url_for('index'))
+    last_data_point = session.get('last_data_point', None)
+    if last_data_point is not None:
+        # 데이터베이스에서 last_data_point 이후의 데이터 검색 및 전송 로직
+        # 데이터 전송 로직...
+        return 'Data transmission resumed'
+    else:
+        return 'No last data point found in session'
+
+@app.route('/resume_analysis', methods=['GET', 'POST'])
+def resume_analysis():
+    if 'analysis_state' in session:
+        # 세션에서 분석 상태를 불러옴
+        analysis_state = session['analysis_state']
+        # 분석 상태를 이용하여 이어서 분석 수행
+        start_data_transfer_thread
+        return 'Resumed analysis'
+    else:
+        return 'No analysis state found'
+
+@app.route('/save_analysis_state', methods=['POST'])
+def save_analysis_state():
+    if request.method == 'POST':
+        analysis_state = request.json.get('analysis_state', {})
+        session['analysis_state'] = analysis_state
+        return 'Analysis state saved'
+
 
 @app.route('/cancel_data')
 def cancel_data():
     global data_transfer_status
-    # 데이터 전송 상태를 초기화하거나 다른 필요한 조치를 취합니다.
     data_transfer_status = 'paused'
-    # 필요한 경우 다른 초기화 코드를 추가합니다.
-
-    # 사용자를 기본 페이지로 리디렉션합니다.
     return redirect(url_for('index'))
-
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
