@@ -3,4 +3,8 @@ Battery/Lib/site-packages/
 static/
 static_vol/
 static_tem/
+node_modules/
 bootstrap/
+flask_session/
+package-lock.json
+package.json

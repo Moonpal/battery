@@ -6,27 +6,32 @@
 </head>
 
 <body>
-    <button onclick="resumeData()">데이터 전송 재개</button>
-    <button onclick="cancelData()">데이터 전송 취소</button>
+    <!-- 이미지를 표시할 요소 -->
+    <div id="initial_visualization">
+        <img id="volImage" src="" alt="Voltage Data">
+        <img id="temImage" src="" alt="Temperature Data">
+    </div>
+    
+    <!-- <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
+        integrity="sha384-mZLF4UVrpi/QTWPA7BjNPEnkIfRFn4ZEO3Qt/HFklTJBj/gBOV8G3HcKn4NfQblz"
+        crossorigin="anonymous"></script> -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
 
     <script>
-        function resumeData() {
-            fetch('/resume_data', { method: 'GET' }).then(response => {
-                if (response.ok) {
-                    // 데이터 전송 재개가 성공적으로 수행됐을 때의 처리
-                    // 예: 페이지 리로드
-                    window.history.back();
-                } else {
-                    // 실패했을 때의 처리
-                }
-            });
-        }
+        var socket = io.connect('http://' + document.domain + ':' + location.port + '/test');
 
-        function cancelData() {
-            fetch('/cancel_data').then(response => {
-                // 필요한 처리
-            });
-        }
+        // 서버에서 전송된 초기 시각화 이미지 경로를 수신하는 이벤트 리스너
+        socket.on('initial_visualization', function (data) {
+            if (data.volImage) {
+                // 'static/' 접두사 제거 없이 경로 설정
+                document.getElementById('volImage').src = data.volImage;
+            }
+            if (data.temImage) {
+                // 'static/' 접두사 제거 없이 경로 설정
+                document.getElementById('temImage').src = data.temImage;
+            }
+        });
     </script>
 </body>
 

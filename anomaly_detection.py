@@ -384,7 +384,7 @@ class Anomaly(object):
     Returns:
     ndarray: 찾은 각 이상 시퀀스에 대한 시작 인덱스, 끝 인덱스, 점수를 포함하는 배열.
  """
- def find_anomalies(self, errors, index, z_range=(0, 10), window_size=None,
+ def find_anomalies(self, errors, index, z_range=(0, 100), window_size=None,
     window_size_portion=None, window_step_size=None,
     window_step_size_portion=None, min_percent=0.1,
     anomaly_padding=50, lower_threshold=False,

@@ -476,7 +476,8 @@ def save_vol_plot_to_file(vol_df):
     fig.savefig(image_path)
     plt.close(fig)
 
-    return image_path
+    # return image_path
+    return image_path.replace('\\', '/')
 
 
 ## 온도
@@ -497,4 +498,5 @@ def save_tem_plot_to_file(tem_df):
     fig.savefig(image_path)
     plt.close(fig)
 
-    return image_path
+    # return image_path
+    return image_path.replace('\\', '/')

@@ -43,18 +43,8 @@ args=arguments(signal_file='/content/drive/MyDrive/충방전 �
 
 #########################################################################################################################
 app = Flask(__name__)
+app.static_folder = 'static'
 socketio = SocketIO(app)
-
-# 세션 설정
-# app.config['SESSION_TYPE'] = 'filesystem'  # 세션을 파일 시스템에 저장 (다른 옵션도 가능)
-# app.config['SESSION_PERMANENT'] = True  # 브라우저를 닫아도 세션 유지
-# app.config['SESSION_KEY_PREFIX'] = 'Moonpal'  # 세션 키 접두사 (고유하게 설정)
-
-# # 추가된 세션 설정
-# app.config['SECRET_KEY'] = os.urandom(24)  # 보안을 위한 시크릿 키 설정
-# app.config['SESSION_USE_SIGNER'] = True  # 세션 데이터 서명 활성화
-
-Session(app)
 
 # 전역 변수로 데이터 전송 상태 관리
 data_transfer_status = 'paused'  # 초기 상태는 중단
@@ -84,7 +74,7 @@ def load_initial_data():
 
     try:
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 3500")
+        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4300")
         initial_data = cursor.fetchall()
         accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
         accumulated_df = accumulated_df.iloc[:, 23:]
@@ -214,6 +204,87 @@ def send_data():
     finally:
         cursor.close()
 
+# new_page.html에서 데이터를 전송받는 함수 구축
+def create_visualization():
+    global accumulated_df
+
+    try:
+        # 전압, 온도 데이터 추출
+        vol_df = accumulated_df.iloc[:,:176]
+        tem_df = accumulated_df.iloc[:,176:]
+
+        # 시각화 함수 호출하여 이미지 파일로 저장
+        image_path_vol = save_vol_plot_to_file(vol_df)
+        image_path_tem = save_tem_plot_to_file(tem_df)
+        print(image_path_vol, image_path_tem)
+        # socketio.emit('volImage', {'image_path': image_path_vol}, namespace='/test')
+        # socketio.emit('temImage', {'image_path': image_path_tem}, namespace='/test')
+
+        return image_path_vol,image_path_tem
+
+    except Exception as e:
+        print(e)
+        return None, None
+        
+# def send_data_2():
+#     global accumulated_df
+
+#     try:
+#         cursor = db.cursor()
+
+#         # 처음에는 last_time을 None으로 설정하여 가장 처음에 받은 데이터의 시간으로 초기화
+#         last_time = None
+
+#         while True:
+#             # 데이터베이스에서 다음 데이터 가져오기
+#             if last_time is None:
+#                 query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 10"
+#                 # query = "SELECT * FROM test08_ng_chg ORDER BY Time ASC LIMIT 10"
+#                 # query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 1"
+#             else:
+#                 # query = f"SELECT * FROM test08_ng_chg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
+#                 query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
+            
+#             # 쿼리문 실행
+#             cursor.execute(query)
+#             data = cursor.fetchone()
+            
+#             if data:
+#                 # 데이터프레임으로 변환
+#                 df = pd.DataFrame([data])
+
+#                 # 여기에서 데이터를 슬라이싱하여 온도, 전압 데이터로 추출
+#                 sliced_df = df.iloc[:, 23:]
+                
+    
+#                 # 원본 데이터프레임에 현재 데이터 누적
+#                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
+
+#                 # 전압,온도 데이터 추출
+#                 vol_df = accumulated_df.iloc[:,:176]
+#                 tem_df = accumulated_df.iloc[:,176:,]
+                
+#                 # 시각화 함수 호출
+#                 image_path_vol = save_vol_plot_to_file(vol_df)
+#                 image_path_tem = save_tem_plot_to_file(tem_df)
+
+#                 # 이미지 파일의 경로를 클라이언트에 전송
+#                 socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
+#                 socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
+
+#             last_time = data['Time']
+#             db.commit()
+
+#             # 1초 간격으로 데이터 갱신
+#             socketio.sleep(0.1)
+
+#     except pymysql.Error as e:
+#         print(e)
+
+#     finally:
+#         cursor.close()
+
+
 load_initial_data()
 
 def start_data_transfer_thread():
@@ -251,8 +322,43 @@ def start_analysis():
 
 @app.route('/new_page')
 def new_page():
-    # 파란색 그래프 감지 시 리디렉션되는 페이지
-    return render_template('new_page.html')
+    vol_image_path, tem_image_path = create_visualization()
+
+    if vol_image_path and tem_image_path:
+        # 'static' 접두사가 이미 포함된 경우, 추가하지 않음
+        vol_image_url = '/' + vol_image_path if 'static' not in vol_image_path else vol_image_path
+        tem_image_url = '/' + tem_image_path if 'static' not in tem_image_path else tem_image_path
+        print("Vol Image url:", vol_image_url)
+        print("Tem Image url:", tem_image_url)
+        socketio.emit('initial_visualization', {'volImage': vol_image_url, 'temImage': tem_image_url}, namespace='/test')
+
+    return render_template('new_page.html', vol_image_path=vol_image_url, tem_image_path=tem_image_url)
+
+# @app.route('/new_page')
+# def new_page():
+#     # 이미지 파일 경로 생성 로직
+#     vol_image_path, tem_image_path = create_visualization()
+#     # 이미지 경로 로그 출력
+#     print("Vol Image Path:", vol_image_path)
+#     print("Tem Image Path:", tem_image_path)
+    
+#     # URL 형태로 변환
+#     vol_image_url = url_for('static', filename=vol_image_path)
+#     tem_image_url = url_for('static', filename=tem_image_path)
+#     print("Vol Image url:", vol_image_url)
+#     print("Tem Image url:", tem_image_url)
+
+#     socketio.emit('initial_visualization', {'volImage': vol_image_url, 'temImage': tem_image_url}, namespace='/test')
+#     print("Image paths sent to client.")  # 로그 남기기
+#     return render_template('new_page.html', vol_image_path=vol_image_url, tem_image_path=tem_image_url)
+
+
+
+# @socketio.on('start_data_streaming', namespace='/test')
+# def handle_start_data_streaming():
+#     thread = threading.Thread(target=send_data_2)
+#     thread.start()
+
 
 # @app.route('/resume_data')
 def resume_data():
