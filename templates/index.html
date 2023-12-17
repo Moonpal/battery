@@ -24,120 +24,90 @@
             /* 이미지 간 간격 조정 */
         }
     </style>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+
+    <!-- Bootstrap JavaScript 및 의존성 (옵션) -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
 </head>
 
 <body>
     <!-- 페이지 내용을 담는 컨테이너 시작 -->
-    <!-- <div class="container mt-4"> -->
-    <div class="container"></div>
-    <h2>Your Real-Time Data Table</h2>
+    <div class="container">
+        <h2>Your Real-Time Data Table</h2>
 
+        <!-- 이미지 및 테이블을 표시하는 섹션 -->
+        <div>
+            <img id="anomaly-detection-plot-image" class="fixed-size" src="" alt="Anomaly Detection">
+            <img id="vol-image" class="fixed-size" src="" alt="Additional Plot 1">
+            <img id="tem-image" class="fixed-size" src="" alt="Additional Plot 2">
+        </div>
 
-    <!-- 2)이미지를 표시할 엘리먼트 추가 -->
-    <!-- <div class="left-side"> -->
-    <div>
-        <!-- 기존에 있는 실시간 업데이트 이미지 -->
-        <img id="anomaly-detection-plot-image" class="fixed-size" src="" alt="Anomaly Detection">
+        <!-- 실시간 데이터를 표시할 테이블 -->
+        <table class="table table-striped" id="data-table"></table>
     </div>
 
-    <!-- <div class="right-side"> -->
-    <!-- 추가할 두 개의 이미지 -->
-    <!-- <img id="vol-image" class="fixed-size" src="" alt="Additional Plot 1">
-        <img id="tem-image" class="fixed-size" src="" alt="Additional Plot 2">
-    </div> -->
-
-    <!-- 3)실시간 데이터를 표시할 테이블 시작 -->
-    <table class="table table-striped" id="data-table">
-        <!-- 여기에 실시간 데이터 헤더 행과 테이블 본문이 동적으로 업데이트됨 -->
-    </table>
-    <!-- 실시간 데이터를 표시할 테이블 끝 -->
-
-    <!-- 페이지 내용을 담는 컨테이너 끝 -->
-
-
-    <!-- 분석 시작 버튼 추가 -->
+    <!-- 분석 시작 버튼 -->
     <button id="start-analysis" onclick="startAnalysis()">분석 시작</button>
 
-    <!-- Socket.IO 스크립트 추가 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <!-- 토스트 메시지를 위한 컨테이너 -->
+    <div aria-live="polite" aria-atomic="true" style="position: relative; z-index: 1050;">
+        <div id="toastContainer" style="position: fixed; top: 0; right: 0;"></div>
+    </div>
 
-    <!-- 위에서 제공한 JavaScript 코드 추가 -->
+    <!-- Socket.IO 스크립트 추가 -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
+        integrity="sha384-mZLF4UVrpi/QTWPA7BjNPEnkIfRFn4ZEO3Qt/HFklTJBj/gBOV8G3HcKn4NfQblz"
+        crossorigin="anonymous"></script>
+
+    <!-- JavaScript 코드 -->
     <script>
-        // Socket.IO 서버에 연결
         var socket = io.connect('http://' + document.domain + ':' + location.port + '/test');
 
-        // 서버로부터 업데이트된 테이블 데이터를 받는 이벤트 핸들러
         socket.on('update_table', function (msg) {
             var jsonData = JSON.parse(msg.data);
             var table = document.getElementById("data-table");
-
-            // 테이블 헤더 생성
-            if (table.getElementsByTagName('thead')[0].childElementCount === 0 && jsonData.length > 0) {
-                var headerRow = table.getElementsByTagName('thead')[0].insertRow(0);
-                for (var key in jsonData[0]) {
-                    if (jsonData[0].hasOwnProperty(key)) {
-                        var cell = headerRow.insertCell(headerRow.cells.length);
-                        cell.innerHTML = '<th>' + key + '</th>';
-                    }
-                }
-            }
-
-            // 테이블 본문 초기화
-            var tbody = table.getElementsByTagName('tbody')[0];
-            tbody.innerHTML = '';
-
-            // 테이블 본문에 데이터 추가
-            jsonData.forEach(function (row) {
-                var newRow = tbody.insertRow(tbody.rows.length);
-                for (var key in row) {
-                    if (row.hasOwnProperty(key)) {
-                        var cell = newRow.insertCell(newRow.cells.length);
-                        cell.innerHTML = row[key];
-                    }
-                }
-            });
+            // 테이블 업데이트 로직...
         });
 
-        // 이벤트와 대응하는 이미지 엘리먼트 ID를 매핑하는 객체
         var eventToImageId = {
             'update_plot': 'anomaly-detection-plot-image',
             'update_plot_vol': 'vol-image',
             'update_plot_tem': 'tem-image',
-            // 여기에 추가 이벤트와 이미지 ID를 매핑할 수 있음
         };
 
-        // 각 이벤트에 대한 핸들러 함수를 생성하는 함수
+        // 토스트 메시지 생성 및 표시
+        socket.on('blue_graph_detected', function () {
+            var toastContainer = document.getElementById('toastContainer');
+            var toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.role = 'alert';
+            toast.ariaLive = 'assertive';
+            toast.ariaAtomic = 'true';
+            toast.innerHTML = '<div class="toast-body">Warning! Anomaly Detected!</div>';
+
+            toastContainer.appendChild(toast);
+            $('.toast').toast('show');
+        });
+
         function createEventHandler(event) {
             return function (msg) {
                 var imageId = eventToImageId[event];
-                var image_path = msg.image_path;
-                // 해당하는 이미지 엘리먼트의 src 속성을 업데이트
-                document.getElementById(imageId).src = image_path;
+                document.getElementById(imageId).src = msg.image_path;
             };
         }
 
-        // 모든 이벤트에 대해 이벤트 핸들러를 설정
         for (var event in eventToImageId) {
             socket.on(event, createEventHandler(event));
         }
 
-        // 실시간으로 이미지가 도착할 때마다 실행되는 이벤트 핸들러
-        // socket.on('update_plot', function (msg) {
-        //     var image_path = msg.image_path;
-        //     // 이미지 엘리먼트의 src 속성을 업데이트
-        //     document.getElementById('plot-image').src = image_path;
-        // });
-
-        // 클라이언트가 페이지를 로드할 때 서버에게 플로팅된 이미지 요청
-        // socket.emit('request_plot');
-
-        // 파란색 그래프 감지 이벤트 리스너 추가
         socket.on('blue_graph_detected', function () {
-            console.log("Blue graph detected");  // 이벤트 수신 로그
-            window.location.href = '/new_page';
+            alert("Blue graph detected");  // 알림창 표시
         });
 
-        // 분석 시작 함수
         function startAnalysis() {
             fetch('/start_analysis', { method: 'POST' })
                 .then(response => {
@@ -148,6 +118,163 @@
                 .catch(error => console.error('Error:', error));
         }
     </script>
+</body>
+
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>분석 시작 페이지</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        .container {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .left-side,
+        .right-side {
+            flex: 1;
+        }
+
+        .fixed-size {
+            width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+            /* 이미지 간 간격 조정 */
+        }
+    </style>
+</head> -->
+
+<!-- <body> -->
+<!-- 페이지 내용을 담는 컨테이너 시작 -->
+<!-- <div class="container mt-4"> -->
+<!-- <div class="container"></div>
+    <h2>Your Real-Time Data Table</h2> -->
+
+
+<!-- 2)이미지를 표시할 엘리먼트 추가 -->
+<!-- <div class="left-side">
+        <div> -->
+<!-- 기존에 있는 실시간 업데이트 이미지 -->
+<!-- <img id="anomaly-detection-plot-image" class="fixed-size" src="" alt="Anomaly Detection">
+        </div>
+
+        <div class="right-side"> -->
+<!-- 추가할 두 개의 이미지 -->
+<!-- <img id="vol-image" class="fixed-size" src="" alt="Additional Plot 1">
+            <img id="tem-image" class="fixed-size" src="" alt="Additional Plot 2">
+        </div> -->
+
+<!-- 3)실시간 데이터를 표시할 테이블 시작 -->
+<!-- <table class="table table-striped" id="data-table"> -->
+<!-- 여기에 실시간 데이터 헤더 행과 테이블 본문이 동적으로 업데이트됨 -->
+<!-- </table> -->
+<!-- 실시간 데이터를 표시할 테이블 끝 -->
+
+<!-- 페이지 내용을 담는 컨테이너 끝 -->
+
+
+<!-- 분석 시작 버튼 추가 -->
+<!-- <button id="start-analysis" onclick="startAnalysis()">분석 시작</button> -->
+
+<!-- Socket.IO 스크립트 추가 -->
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script> -->
+<!-- <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
+            integrity="sha384-mZLF4UVrpi/QTWPA7BjNPEnkIfRFn4ZEO3Qt/HFklTJBj/gBOV8G3HcKn4NfQblz"
+            crossorigin="anonymous"></script> -->
+
+<!-- 위에서 제공한 JavaScript 코드 추가 -->
+<!-- <script>
+            // Socket.IO 서버에 연결
+            var socket = io.connect('http://' + document.domain + ':' + location.port + '/test');
+
+            // 서버로부터 업데이트된 테이블 데이터를 받는 이벤트 핸들러
+            socket.on('update_table', function (msg) {
+                var jsonData = JSON.parse(msg.data);
+                var table = document.getElementById("data-table");
+
+                // 테이블 헤더 생성
+                if (table.getElementsByTagName('thead')[0].childElementCount === 0 && jsonData.length > 0) {
+                    var headerRow = table.getElementsByTagName('thead')[0].insertRow(0);
+                    for (var key in jsonData[0]) {
+                        if (jsonData[0].hasOwnProperty(key)) {
+                            var cell = headerRow.insertCell(headerRow.cells.length);
+                            cell.innerHTML = '<th>' + key + '</th>';
+                        }
+                    }
+                }
+
+                // 테이블 본문 초기화
+                var tbody = table.getElementsByTagName('tbody')[0];
+                tbody.innerHTML = '';
+
+                // 테이블 본문에 데이터 추가
+                jsonData.forEach(function (row) {
+                    var newRow = tbody.insertRow(tbody.rows.length);
+                    for (var key in row) {
+                        if (row.hasOwnProperty(key)) {
+                            var cell = newRow.insertCell(newRow.cells.length);
+                            cell.innerHTML = row[key];
+                        }
+                    }
+                });
+            });
+
+            // 이벤트와 대응하는 이미지 엘리먼트 ID를 매핑하는 객체
+            var eventToImageId = {
+                'update_plot': 'anomaly-detection-plot-image',
+                'update_plot_vol': 'vol-image',
+                'update_plot_tem': 'tem-image',
+                // 여기에 추가 이벤트와 이미지 ID를 매핑할 수 있음
+            };
+
+            // 각 이벤트에 대한 핸들러 함수를 생성하는 함수
+            function createEventHandler(event) {
+                return function (msg) {
+                    var imageId = eventToImageId[event];
+                    var image_path = msg.image_path;
+                    // 해당하는 이미지 엘리먼트의 src 속성을 업데이트
+                    document.getElementById(imageId).src = image_path;
+                };
+            }
+
+            // 모든 이벤트에 대해 이벤트 핸들러를 설정
+            for (var event in eventToImageId) {
+                socket.on(event, createEventHandler(event));
+            }
+
+            // 실시간으로 이미지가 도착할 때마다 실행되는 이벤트 핸들러
+            // socket.on('update_plot', function (msg) {
+            //     var image_path = msg.image_path;
+            //     // 이미지 엘리먼트의 src 속성을 업데이트
+            //     document.getElementById('plot-image').src = image_path;
+            // });
+
+            // 클라이언트가 페이지를 로드할 때 서버에게 플로팅된 이미지 요청
+            socket.emit('request_plot');
+
+            // 파란색 그래프 감지 이벤트 리스너 추가
+            socket.on('blue_graph_detected', function () {
+                console.log("Blue graph detected");  // 이벤트 수신 로그
+                // window.location.href = '/new_page';
+            });
+
+            // 분석 시작 함수
+            function startAnalysis() {
+                fetch('/start_analysis', { method: 'POST' })
+                    .then(response => {
+                        if (response.ok) {
+                            console.log("분석 시작됨");
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        </script>
 
 </body>
 

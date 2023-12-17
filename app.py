@@ -1,5 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, session, request
-from flask_session import Session
+from flask_socketio import emit
 from flask_socketio import SocketIO
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
@@ -171,22 +171,32 @@ def send_data():
                             image_path_tem = save_tem_plot_to_file(tem_df)
                             # image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores)
                             image_path, status = save_plot_to_file(anomalies, length_anom, X, Z_score1)
-                            print(status)
-
-                            # 이미지 파일의 경로를 클라이언트에 전송
-                            # socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
-                            if status == 'stop':
-                                data_transfer_status = 'paused'
+                            
+                            if status == 'Anomaly Detected':
                                 blue_graph_detected = True
-                                # 파란색 그래프 감지 이벤트를 클라이언트에게 발송
                                 socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
                                 socketio.emit('blue_graph_detected', namespace='/test')
-                                break
-                            elif status == 'continue':
-                                socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
+                                # 알림 전송 후 상태 초기화
+                                blue_graph_detected = False
 
-                            # socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
-                            # socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
+                            # 이미지 파일의 경로를 클라이언트에 전송
+                            socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
+                            socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
+                            socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
+                            # 이미지 파일의 경로를 클라이언트에 전송################################################################
+                            # # socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
+                            # if status == 'stop':
+                            #     data_transfer_status = 'paused'
+                            #     blue_graph_detected = True
+                            #     # 파란색 그래프 감지 이벤트를 클라이언트에게 발송
+                            #     socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
+                            #     socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
+                            #     socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
+                            #     socketio.emit('blue_graph_detected', namespace='/test')
+                            # elif status == 'continue':
+                            #     socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
+
+                            
                             
                     else:
                         # 예외가 발생하거나 데이터가 충분하지 않은 경우에 대한 처리
@@ -204,218 +214,36 @@ def send_data():
     finally:
         cursor.close()
 
-# new_page.html에서 데이터를 전송받는 함수 구축
-def create_visualization():
-    global accumulated_df
-
-    try:
-        # 전압, 온도 데이터 추출
-        vol_df = accumulated_df.iloc[:,:176]
-        tem_df = accumulated_df.iloc[:,176:]
-
-        # 시각화 함수 호출하여 이미지 파일로 저장
-        image_path_vol = save_vol_plot_to_file(vol_df)
-        image_path_tem = save_tem_plot_to_file(tem_df)
-        print(image_path_vol, image_path_tem)
-        # socketio.emit('volImage', {'image_path': image_path_vol}, namespace='/test')
-        # socketio.emit('temImage', {'image_path': image_path_tem}, namespace='/test')
-
-        return image_path_vol,image_path_tem
-
-    except Exception as e:
-        print(e)
-        return None, None
-        
-# def send_data_2():
-#     global accumulated_df
-
-#     try:
-#         cursor = db.cursor()
-
-#         # 처음에는 last_time을 None으로 설정하여 가장 처음에 받은 데이터의 시간으로 초기화
-#         last_time = None
-
-#         while True:
-#             # 데이터베이스에서 다음 데이터 가져오기
-#             if last_time is None:
-#                 query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 10"
-#                 # query = "SELECT * FROM test08_ng_chg ORDER BY Time ASC LIMIT 10"
-#                 # query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 1"
-#             else:
-#                 # query = f"SELECT * FROM test08_ng_chg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
-#                 query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
-            
-#             # 쿼리문 실행
-#             cursor.execute(query)
-#             data = cursor.fetchone()
-            
-#             if data:
-#                 # 데이터프레임으로 변환
-#                 df = pd.DataFrame([data])
-
-#                 # 여기에서 데이터를 슬라이싱하여 온도, 전압 데이터로 추출
-#                 sliced_df = df.iloc[:, 23:]
-                
-    
-#                 # 원본 데이터프레임에 현재 데이터 누적
-#                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
-
-#                 # 전압,온도 데이터 추출
-#                 vol_df = accumulated_df.iloc[:,:176]
-#                 tem_df = accumulated_df.iloc[:,176:,]
-                
-#                 # 시각화 함수 호출
-#                 image_path_vol = save_vol_plot_to_file(vol_df)
-#                 image_path_tem = save_tem_plot_to_file(tem_df)
-
-#                 # 이미지 파일의 경로를 클라이언트에 전송
-#                 socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
-#                 socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
-
-#             last_time = data['Time']
-#             db.commit()
-
-#             # 1초 간격으로 데이터 갱신
-#             socketio.sleep(0.1)
-
-#     except pymysql.Error as e:
-#         print(e)
-
-#     finally:
-#         cursor.close()
-
-
 load_initial_data()
 
-def start_data_transfer_thread():
-    global data_transfer_status
-    data_transfer_status = 'running'
-
-    # send_data 함수를 주기적으로 실행하는 스레드 시작
-    data_thread = threading.Thread(target=send_data)
-    data_thread.daemon = True
-    data_thread.start()
-
+# 백그라운드 스레드에서 데이터를 실시간으로 전송하는 함수 실행
+# Flask 라우트 설정
 @app.route('/')
 def index():
-    if blue_background_detected:
-        return redirect(url_for('new_page'))
+    # 기본 홈페이지를 렌더링합니다.
     return render_template('index.html')
-
-@socketio.on('blue_graph_detected', namespace='/test')
-def handle_blue_graph_detected():
-    print("Blue graph detected")  # 이벤트 발생 로그
-    socketio.emit('blue_graph_detected', namespace='/test')  # 클라이언트에게 이벤트 전송
-# blue_graph_detected 수정본
-# @socketio.on('blue_graph_detected', namespace='/test')
-# def handle_blue_graph_detected():
-#     global blue_background_detected
-#     blue_background_detected = True
-#     socketio.emit('blue_graph_detected', namespace='/test')
 
 @app.route('/start_analysis', methods=['POST'])
 def start_analysis():
+    # 분석을 시작하는 로직을 여기에 작성합니다.
+    # 예를 들어, 데이터 처리 또는 분석 작업 등.
     global data_transfer_status
     data_transfer_status = 'running'
     socketio.start_background_task(target=send_data)
     return '', 204
 
-@app.route('/new_page')
-def new_page():
-    vol_image_path, tem_image_path = create_visualization()
+@socketio.on('connect', namespace='/test')
+def test_connect():
+    # 클라이언트가 Socket.IO를 통해 연결되었을 때 수행할 작업.
+    print('Client connected via Socket.IO')
+    # 여기에서 필요한 데이터 전송 또는 기타 작업을 수행할 수 있습니다.
 
-    if vol_image_path and tem_image_path:
-        # 'static' 접두사가 이미 포함된 경우, 추가하지 않음
-        vol_image_url = '/' + vol_image_path if 'static' not in vol_image_path else vol_image_path
-        tem_image_url = '/' + tem_image_path if 'static' not in tem_image_path else tem_image_path
-        print("Vol Image url:", vol_image_url)
-        print("Tem Image url:", tem_image_url)
-        socketio.emit('initial_visualization', {'volImage': vol_image_url, 'temImage': tem_image_url}, namespace='/test')
-
-    return render_template('new_page.html', vol_image_path=vol_image_url, tem_image_path=tem_image_url)
-
-# @app.route('/new_page')
-# def new_page():
-#     # 이미지 파일 경로 생성 로직
-#     vol_image_path, tem_image_path = create_visualization()
-#     # 이미지 경로 로그 출력
-#     print("Vol Image Path:", vol_image_path)
-#     print("Tem Image Path:", tem_image_path)
-    
-#     # URL 형태로 변환
-#     vol_image_url = url_for('static', filename=vol_image_path)
-#     tem_image_url = url_for('static', filename=tem_image_path)
-#     print("Vol Image url:", vol_image_url)
-#     print("Tem Image url:", tem_image_url)
-
-#     socketio.emit('initial_visualization', {'volImage': vol_image_url, 'temImage': tem_image_url}, namespace='/test')
-#     print("Image paths sent to client.")  # 로그 남기기
-#     return render_template('new_page.html', vol_image_path=vol_image_url, tem_image_path=tem_image_url)
-
-
-
-# @socketio.on('start_data_streaming', namespace='/test')
-# def handle_start_data_streaming():
-#     thread = threading.Thread(target=send_data_2)
-#     thread.start()
-
-
-# @app.route('/resume_data')
-def resume_data():
-    last_data_point = session.get('last_data_point', None)
-    if last_data_point is not None:
-        # 데이터베이스에서 last_data_point 이후의 데이터 검색 및 전송 로직
-        # 데이터 전송 로직...
-        return 'Data transmission resumed'
-    else:
-        return 'No last data point found in session'
-
-@app.route('/resume_analysis', methods=['GET', 'POST'])
-def resume_analysis():
-    if 'analysis_state' in session:
-        # 세션에서 분석 상태를 불러옴
-        analysis_state = session['analysis_state']
-        # 분석 상태를 이용하여 이어서 분석 수행
-        start_data_transfer_thread
-        return 'Resumed analysis'
-    else:
-        return 'No analysis state found'
-
-@app.route('/save_analysis_state', methods=['POST'])
-def save_analysis_state():
-    if request.method == 'POST':
-        analysis_state = request.json.get('analysis_state', {})
-        session['analysis_state'] = analysis_state
-        return 'Analysis state saved'
-
-
-@app.route('/cancel_data')
-def cancel_data():
-    global data_transfer_status
-    data_transfer_status = 'paused'
-    return redirect(url_for('index'))
+@socketio.on('some_event')  # 이벤트 처리를 위한 데코레이터와 함수
+def handle_my_custom_event(data):
+    global blue_graph_detected
+    # blue_graph_detected 변수 상태에 따라 클라이언트에게 메시지 전송
+    if blue_graph_detected:
+        emit('blue_graph_detected')
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
-
-# 백그라운드 스레드에서 데이터를 실시간으로 전송하는 함수 실행
-# @socketio.on('connect', namespace='/test')
-# def test_connect():
-#     print('Client connected')
-#     socketio.start_background_task(target=send_data)
-
-# Flask 라우트 설정
-# @app.route('/')
-# # def index():
-# #     return render_template('index.html')
-# def index():
-#     if data_transfer_status == 'paused':
-#         return redirect(url_for('new_page'))
-#     return render_template('index.html')
-
-# @app.route('/new_page')
-# def new_page():
-#     return render_template('new_page.html')
-
-# if __name__ == '__main__':
-#     socketio.run(app, debug=True)

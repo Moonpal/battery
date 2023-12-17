@@ -295,9 +295,9 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
 
     # 파란색 배경이 감지되면 'stop' 상태와 함께 이미지 경로 반환
     if blue_background_detected:
-        return image_path, 'stop'
+        return image_path, 'Anomaly Detected'
     else:
-        return image_path, 'continue'
+        return image_path, 'Good State'
     # return image_path
 
 
@@ -476,8 +476,8 @@ def save_vol_plot_to_file(vol_df):
     fig.savefig(image_path)
     plt.close(fig)
 
-    # return image_path
-    return image_path.replace('\\', '/')
+    return image_path
+    # return image_path.replace('\\', '/')
 
 
 ## 온도
@@ -498,5 +498,5 @@ def save_tem_plot_to_file(tem_df):
     fig.savefig(image_path)
     plt.close(fig)
 
-    # return image_path
-    return image_path.replace('\\', '/')
+    return image_path
+    # return image_path.replace('\\', '/')
