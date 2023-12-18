@@ -19,12 +19,13 @@ import threading
 ## arguments 정의
 arguments=collections.namedtuple('Args',
  'signal_file timest_form anomaly_file mode aggregate_interval regate_interval')
-args=arguments(signal_file='/content/drive/MyDrive/충방전 데이터파일/data/raw_data/test/Test07_NG_dchg.csv',
+args=arguments(signal_file='C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv',
       timest_form=0,
       anomaly_file='C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv',
       mode='predict',
       aggregate_interval=1,
       regate_interval=1)
+      
 
 # 파일 경로
 # "C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test01_OK_chg_Label.csv"
@@ -64,17 +65,18 @@ db = pymysql.connect(
 
 # 새로운 전역 변수로 누적된 DataFrame 설정
 accumulated_df = pd.DataFrame()
-# vol_acc_df = pd.DataFrame()
-# tem_acc_df = pd.DataFrame()
+# total_data_count = 0
 
 # 초기 데이터 로드 함수
 def load_initial_data():
     global accumulated_df
     global data_transfer_status
-
+    global total_data_count
+    total_data_count = 4350 # 아래 LIMIT 4400과 함께 수정
+    
     try:
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4300")
+        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4350")
         initial_data = cursor.fetchall()
         accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
         accumulated_df = accumulated_df.iloc[:, 23:]
@@ -85,9 +87,9 @@ def load_initial_data():
 
 # 데이터를 전송받는 함수 구축
 def send_data():
-    global last_data_point
     global accumulated_df
     global blue_graph_detected
+    global total_data_count
 
     try:
         cursor = db.cursor()
@@ -124,14 +126,12 @@ def send_data():
                 # 원본 데이터프레임에 현재 데이터 누적
                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
 
-                # # last_data_point 업데이트
-                # if not accumulated_df.empty:
-                #     last_data_point = accumulated_df.iloc[-1]['Time']
-                #     session['last_data_point'] = last_data_point
+                # total_data_count 업데이트
+                # total_data_count += len(sliced_df)
 
                 # 10개씩 주기적으로 diff_smooth + PCA 수행
+                # if len(accumulated_df) >= 50 and len(accumulated_df) % 50 == 0:
                 if len(accumulated_df) >= 10 and len(accumulated_df) % 10 == 0:
-                # if len(accumulated_df) >= 100 and len(accumulated_df) % 100 == 0:
 
                     processed_df = diff_smooth_df(accumulated_df.copy(), lags_n=0, diffs_n=0, smooth_n=0)
                     processed_df = do_pca(processed_df, 3)
@@ -142,7 +142,7 @@ def send_data():
                     # 초기화
                     y_hat, critic = None, None
                     # if len(X) >= 10:
-                    if len(X) >= 100:
+                    if len(X) >= 10:
                         try:
                             X, y, X_index, y_index = rolling_window_sequences(X, index, window_size=100, target_size=1, step_size=1, target_column=0)
                             y_hat, critic = predict(X)
@@ -161,16 +161,19 @@ def send_data():
                         # fixed_threshold 계산중
                         # fixed_threshold = anomaly._fixed_threshold(final_scores)
                         if anomalies is not None:
-
+                            print(anomalies)
                             # 전압,온도 데이터 추출
                             vol_df = accumulated_df.iloc[:,:176]
-                            tem_df = accumulated_df.iloc[:,176:,]
-                            
+                            tem_df = accumulated_df.iloc[:,176:]
+
                             # 시각화 함수 호출
-                            image_path_vol = save_vol_plot_to_file(vol_df)
-                            image_path_tem = save_tem_plot_to_file(tem_df)
+                            # image_path_vol = save_vol_plot_to_file(vol_df)
+                            # image_path_tem = save_tem_plot_to_file(tem_df)
+                            image_path_vol = save_vol_plot_to_file(vol_df,total_data_count)
+                            image_path_tem = save_tem_plot_to_file(tem_df,total_data_count)
                             # image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores)
                             image_path, status = save_plot_to_file(anomalies, length_anom, X, Z_score1)
+                            print(status)
                             
                             if status == 'Anomaly Detected':
                                 blue_graph_detected = True
@@ -218,10 +221,15 @@ load_initial_data()
 
 # 백그라운드 스레드에서 데이터를 실시간으로 전송하는 함수 실행
 # Flask 라우트 설정
-@app.route('/')
+@app.route('/')############################################################################# templates 적용준비중
 def index():
     # 기본 홈페이지를 렌더링합니다.
-    return render_template('index.html')
+    return render_template('dashboard.html')
+
+# @app.route('/')
+# def index():
+#     # 기본 홈페이지를 렌더링합니다.
+#     return render_template('index.html')
 
 @app.route('/start_analysis', methods=['POST'])
 def start_analysis():

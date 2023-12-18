@@ -221,13 +221,12 @@ def find_anomalies(gt, pred):
     anomalies = [anomaly_gt, anomaly_pred]
     return anomalies
 
-
-## 기본 이상치 탐지 그래프 그리기
+# 기본 이상치 탐지 그래프 그리기 -> 최신의 100개의 데이터만 그리도록###################################################################
 def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     register_matplotlib_converters()
     np.random.seed(0)
     
-    # 파란색 배경이 있는지 확인하는 플래그############################################
+    # 파란색 배경이 있는지 확인하는 플래그
     blue_background_detected = False
 
     if anomalies is not None and not isinstance(anomalies, list):
@@ -248,14 +247,14 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     fig = plt.figure(figsize=(30, 12))
     ax = fig.add_subplot(111)
     
-    # windsize 10
-    # max_len = length_anom - 10
-    max_len = length_anom - 100
-    time = range(max_len)
-    Z_score2 = Z_score1[:max_len]
+    # 마지막 100개 데이터 선택
+    latest_data_size = 100
+    max_len = min(length_anom, latest_data_size)
+    time = range(length_anom - latest_data_size, length_anom)
+    Z_score2 = Z_score1[-latest_data_size:]  # 마지막 100개
     X_signal = []
 
-    for kk in range(max_len):
+    for kk in range(-latest_data_size, 0):
         X_signal.append(X[kk, 1])
 
     X_signal_2 = np.array(X_signal)
@@ -264,7 +263,6 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
     plt.plot(time, Z_score2, label='Z score')
     plt.legend(loc=0, fontsize=30)
-    print("length_anom, max_len:", length_anom, max_len)
     
     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
     
@@ -275,15 +273,17 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
         for _, anom in enumerate(anomaly):
             t1 = anom[0]
             t2 = anom[1]
-            plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
 
-            # 파란색 배경 감지 확인#########################################
-            if colors[i] == 'blue':
-                blue_background_detected = True
-    
+            # 이상치 구간이 최신 100개 데이터 내에 포함되는지 확인
+            if (t1 < length_anom and t2 >= length_anom - latest_data_size):
+                t1_clipped = max(t1, length_anom - latest_data_size)
+                t2_clipped = min(t2, length_anom)
+                plt.axvspan(t1_clipped, t2_clipped, color=colors[i], alpha=0.2)
+                if colors[i] == 'blue':
+                    blue_background_detected = True
 
-    plt.title(' Test03_OK_chg : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
-    plt.ylabel('PCA1, PCA2, Z_score', size=30)
+    plt.title('Test07_NG_dchg: Red = True Anomaly, Blue = Predicted Anomaly', size=34)
+    plt.ylabel('PCA1, PCA2, Z score', size=30)
     plt.xlabel('Time', size=30)
     plt.xticks(size=26)
     plt.yticks(size=26)
@@ -293,12 +293,158 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
     fig.savefig(image_path)
     plt.close(fig)
 
-    # 파란색 배경이 감지되면 'stop' 상태와 함께 이미지 경로 반환
-    if blue_background_detected:
-        return image_path, 'Anomaly Detected'
-    else:
-        return image_path, 'Good State'
-    # return image_path
+    return image_path, 'Anomaly Detected' if blue_background_detected else 'Good State'#############################################
+
+# def save_plot_to_file(anomalies, length_anom, X, Z_score1):
+#     register_matplotlib_converters()
+#     np.random.seed(0)
+    
+#     # 파란색 배경이 있는지 확인하는 플래그
+#     blue_background_detected = False
+
+#     if anomalies is not None and not isinstance(anomalies, list):
+#         anomalies = [anomalies]
+
+#     # 현재 날짜 및 시간을 기반으로 폴더 이름 생성
+#     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = os.path.join('static', current_time)
+
+#     # 폴더가 없으면 생성
+#     if not os.path.exists(folder_name):
+#         os.makedirs(folder_name)
+
+#     # 결과 이미지 파일의 경로 설정
+#     image_path = os.path.join(folder_name, 'plot.png')
+
+#     # 결과를 이미지 파일로 저장
+#     fig = plt.figure(figsize=(30, 12))
+#     ax = fig.add_subplot(111)
+    
+#     # 마지막 100개 데이터 선택
+#     latest_data_size = 100
+#     max_len = min(length_anom, latest_data_size)
+#     time = range(length_anom - latest_data_size, length_anom)
+#     Z_score2 = Z_score1[-latest_data_size:]  # 마지막 100개
+#     X_signal = []
+
+#     for kk in range(-latest_data_size, 0):
+#         X_signal.append(X[kk, 1])
+
+#     X_signal_2 = np.array(X_signal)
+    
+#     plt.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
+#     plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
+#     plt.plot(time, Z_score2, label='Z score')
+#     plt.legend(loc=0, fontsize=30)
+    
+#     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
+    
+#     for i, anomaly in enumerate(anomalies):
+#         if anomaly is not None and not isinstance(anomaly, list):
+#             anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+        
+#         for _, anom in enumerate(anomaly):
+#             t1 = anom[0]
+#             t2 = anom[1]
+
+#             # 이상치 구간이 최신 100개 데이터에 포함되는지 확인
+#             if (t1 >= length_anom - latest_data_size) and (t2 <= length_anom):
+#                 plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+#                 if colors[i] == 'blue':
+#                     blue_background_detected = True
+
+#     plt.title('Test03_OK_chg: Red = True Anomaly, Blue = Predicted Anomaly', size=34)
+#     plt.ylabel('PCA1, PCA2, Z_score', size=30)
+#     plt.xlabel('Time', size=30)
+#     plt.xticks(size=26)
+#     plt.yticks(size=26)
+#     plt.xlim([time[0], time[-1]])
+
+#     # 결과를 이미지 파일로 저장
+#     fig.savefig(image_path)
+#     plt.close(fig)
+
+#     return image_path, 'Anomaly Detected' if blue_background_detected else 'Good State'
+
+
+
+## 기본 이상치 탐지 그래프 그리기
+# def save_plot_to_file(anomalies, length_anom, X, Z_score1):
+#     register_matplotlib_converters()
+#     np.random.seed(0)
+    
+#     # 파란색 배경이 있는지 확인하는 플래그############################################
+#     blue_background_detected = False
+
+#     if anomalies is not None and not isinstance(anomalies, list):
+#         anomalies = [anomalies]
+
+#     # 현재 날짜 및 시간을 기반으로 폴더 이름 생성
+#     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = os.path.join('static', current_time)
+
+#     # 폴더가 없으면 생성
+#     if not os.path.exists(folder_name):
+#         os.makedirs(folder_name)
+
+#     # 결과 이미지 파일의 경로 설정
+#     image_path = os.path.join(folder_name, 'plot.png')
+
+#     # 결과를 이미지 파일로 저장
+#     fig = plt.figure(figsize=(30, 12))
+#     ax = fig.add_subplot(111)
+    
+#     # windsize 10
+#     # max_len = length_anom - 10
+#     max_len = length_anom - 100
+#     time = range(max_len)
+#     Z_score2 = Z_score1[:max_len]
+#     X_signal = []
+
+#     for kk in range(max_len):
+#         X_signal.append(X[kk, 1])
+
+#     X_signal_2 = np.array(X_signal)
+    
+#     plt.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
+#     plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
+#     plt.plot(time, Z_score2, label='Z score')
+#     plt.legend(loc=0, fontsize=30)
+#     print("length_anom, max_len:", length_anom, max_len)
+    
+#     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
+    
+#     for i, anomaly in enumerate(anomalies):
+#         if anomaly is not None and not isinstance(anomaly, list):
+#             anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+        
+#         for _, anom in enumerate(anomaly):
+#             t1 = anom[0]
+#             t2 = anom[1]
+#             plt.axvspan(t1, t2, color=colors[i], alpha=0.2)
+
+#             # 파란색 배경 감지 확인
+#             if colors[i] == 'blue':
+#                 blue_background_detected = True
+    
+
+#     plt.title(' Test03_OK_chg : Red = True Anomaly, Blue = Predicted Anomaly', size=34)
+#     plt.ylabel('PCA1, PCA2, Z_score', size=30)
+#     plt.xlabel('Time', size=30)
+#     plt.xticks(size=26)
+#     plt.yticks(size=26)
+#     plt.xlim([time[0], time[-1]])
+
+#     # 결과를 이미지 파일로 저장
+#     fig.savefig(image_path)
+#     plt.close(fig)
+
+#     # 파란색 배경이 감지되면 'stop' 상태와 함께 이미지 경로 반환
+#     if blue_background_detected:
+#         return image_path, 'Anomaly Detected'
+#     else:
+#         return image_path, 'Good State'
+#     # return image_path
 
 
 ## 2) fixed_anomalies를 활용한 시각화 그리기
@@ -459,7 +605,31 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
 #     return image_path
 
 ## 전압
-def save_vol_plot_to_file(vol_df):
+# def save_vol_plot_to_file(vol_df):
+#     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = os.path.join('static', 'static_vol', current_time)
+#     if not os.path.exists(folder_name):
+#         os.makedirs(folder_name)
+#     image_path = os.path.join(folder_name, 'plot.png')
+
+#     fig, ax = plt.subplots(figsize=(30, 12))
+#     for column in vol_df.columns:
+#         ax.plot(vol_df.index, vol_df[column], label=column)
+#     ax.set_title('Voltage Data Over Time', size=34)
+#     ax.set_xlabel('Time')
+#     ax.set_ylabel('Voltage')
+#     # ax.legend(loc='upper left')
+#     fig.savefig(image_path)
+#     plt.close(fig)
+
+#     return image_path
+    # return image_path.replace('\\', '/')
+
+# 최신 100개의 데이터만 시각화 진행
+def save_vol_plot_to_file(vol_df, total_data_count):
+    latest_data_size = 100
+    vol_df = vol_df.tail(latest_data_size)
+
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = os.path.join('static', 'static_vol', current_time)
     if not os.path.exists(folder_name):
@@ -468,20 +638,43 @@ def save_vol_plot_to_file(vol_df):
 
     fig, ax = plt.subplots(figsize=(30, 12))
     for column in vol_df.columns:
-        ax.plot(vol_df.index, vol_df[column], label=column)
-    ax.set_title('Voltage Data Over Time')
+        ax.plot(range(total_data_count - latest_data_size, total_data_count), vol_df[column], label=column)
+    ax.set_title('Voltage Data Over Time (Last 100 Data Points)', size=34)
     ax.set_xlabel('Time')
     ax.set_ylabel('Voltage')
-    # ax.legend(loc='upper left')
     fig.savefig(image_path)
     plt.close(fig)
 
     return image_path
-    # return image_path.replace('\\', '/')
+
 
 
 ## 온도
-def save_tem_plot_to_file(tem_df):
+# def save_tem_plot_to_file(tem_df):
+#     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = os.path.join('static', 'static_tem', current_time)
+#     if not os.path.exists(folder_name):
+#         os.makedirs(folder_name)
+#     image_path = os.path.join(folder_name, 'plot.png')
+
+#     fig, ax = plt.subplots(figsize=(30, 12))
+#     for column in tem_df.columns:
+#         ax.plot(tem_df.index, tem_df[column], label=column)
+#     ax.set_title('Temperature Data Over Time', size=34)
+#     ax.set_xlabel('Time')
+#     ax.set_ylabel('Temperature')
+#     # ax.legend(loc='upper left')
+#     fig.savefig(image_path)
+#     plt.close(fig)
+
+#     return image_path
+    # return image_path.replace('\\', '/')
+
+# 최신 100개의 데이터만 시각화 진행
+def save_tem_plot_to_file(tem_df, total_data_count):
+    latest_data_size = 100
+    tem_df = tem_df.tail(latest_data_size)
+
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = os.path.join('static', 'static_tem', current_time)
     if not os.path.exists(folder_name):
@@ -490,13 +683,13 @@ def save_tem_plot_to_file(tem_df):
 
     fig, ax = plt.subplots(figsize=(30, 12))
     for column in tem_df.columns:
-        ax.plot(tem_df.index, tem_df[column], label=column)
-    ax.set_title('Temperature Data Over Time')
+        ax.plot(range(total_data_count - latest_data_size, total_data_count), tem_df[column], label=column)
+    ax.set_title('Temperature Data Over Time (Last 100 Data Points)', size=34)
     ax.set_xlabel('Time')
     ax.set_ylabel('Temperature')
-    # ax.legend(loc='upper left')
     fig.savefig(image_path)
     plt.close(fig)
 
     return image_path
-    # return image_path.replace('\\', '/')
+
+
