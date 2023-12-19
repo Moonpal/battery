@@ -221,79 +221,158 @@ def find_anomalies(gt, pred):
     anomalies = [anomaly_gt, anomaly_pred]
     return anomalies
 
-# 기본 이상치 탐지 그래프 그리기 -> 최신의 100개의 데이터만 그리도록###################################################################
-def save_plot_to_file(anomalies, length_anom, X, Z_score1):
-    register_matplotlib_converters()
-    np.random.seed(0)
-    
-    # 파란색 배경이 있는지 확인하는 플래그
-    blue_background_detected = False
+## Char.js 로직 구현을 위한 함수 수정
+# def prepare_anomaly_data(anomalies, length_anom, X, Z_score1):
+#     latest_data_size = min(100, len(X))  # X 배열의 크기에 따라 조정
+#     time = list(range(length_anom - latest_data_size, length_anom))
+#     Z_score2 = Z_score1[-latest_data_size:]
+#     X_signal = [X[kk, 1] for kk in range(-latest_data_size, 0)]
+#     X_signal_2 = np.array(X_signal)
 
-    if anomalies is not None and not isinstance(anomalies, list):
-        anomalies = [anomalies]
+#     anomaly_gt_data = []
+#     anomaly_pred_data = []
 
-    # 현재 날짜 및 시간을 기반으로 폴더 이름 생성
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = os.path.join('static', current_time)
+#     # 실제 이상 구간
+#     for t1, t2 in anomalies[0]:
+#         if t1 < length_anom and t2 >= length_anom - latest_data_size:
+#             t1_clipped = max(t1, length_anom - latest_data_size)
+#             t2_clipped = min(t2, length_anom)
+#             anomaly_gt_data.append([t1_clipped, t2_clipped])
 
-    # 폴더가 없으면 생성
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
+#     # 예측된 이상 구간
+#     for t1, t2 in anomalies[1]:
+#         if t1 < length_anom and t2 >= length_anom - latest_data_size:
+#             t1_clipped = max(t1, length_anom - latest_data_size)
+#             t2_clipped = min(t2, length_anom)
+#             anomaly_pred_data.append([t1_clipped, t2_clipped])
 
-    # 결과 이미지 파일의 경로 설정
-    image_path = os.path.join(folder_name, 'plot.png')
-
-    # 결과를 이미지 파일로 저장
-    fig = plt.figure(figsize=(30, 12))
-    ax = fig.add_subplot(111)
-    
-    # 마지막 100개 데이터 선택
-    latest_data_size = 100
-    max_len = min(length_anom, latest_data_size)
-    time = range(length_anom - latest_data_size, length_anom)
-    Z_score2 = Z_score1[-latest_data_size:]  # 마지막 100개
-    X_signal = []
-
-    for kk in range(-latest_data_size, 0):
-        X_signal.append(X[kk, 1])
-
+#     data = {
+#         'time': time,
+#         'PCA1': list(3 * X_signal_2[:, 0]),
+#         'PCA2': list(3 * X_signal_2[:, 1]),
+#         'Z_score': list(Z_score2),
+#         'anomaly_gt': anomaly_gt_data,
+#         'anomaly_pred': anomaly_pred_data
+#     }
+#     return data
+def prepare_anomaly_data(anomalies, length_anom, X, Z_score1):
+    latest_data_size = min(100, len(X))
+    time = list(range(length_anom - latest_data_size, length_anom))
+    Z_score2 = Z_score1[-latest_data_size:]
+    X_signal = [X[kk, 1] for kk in range(-latest_data_size, 0)]
     X_signal_2 = np.array(X_signal)
+
+    datasets = [
+        {
+            'label': 'PCA1',
+            'data': list(1.5 * X_signal_2[:, 0])
+        },
+        {
+            'label': 'PCA2',
+            'data': list(1.5 * X_signal_2[:, 1])
+        },
+        {
+            'label': 'Z_score',
+            'data': list(Z_score2)
+        }
+    ]
+
+    # 이상 구간 데이터 처리
+    anomaly_gt_data = []
+    anomaly_pred_data = []
+
+    for t1, t2 in anomalies[0]:  # 실제 이상 구간
+        if t1 < length_anom and t2 >= length_anom - latest_data_size:
+            anomaly_gt_data.append({'start': t1, 'end': t2})
+
+    for t1, t2 in anomalies[1]:  # 예측된 이상 구간
+        if t1 < length_anom and t2 >= length_anom - latest_data_size:
+            anomaly_pred_data.append({'start': t1, 'end': t2})
+
+    return {
+        'time': time,
+        'datasets': datasets,
+        'anomaly_gt': anomaly_gt_data,
+        'anomaly_pred': anomaly_pred_data
+    }
+
+
+
+
+
+# 기본 이상치 탐지 그래프 그리기 -> 최신의 100개의 데이터만 그리도록###################################################################
+# def save_plot_to_file(anomalies, length_anom, X, Z_score1):
+#     register_matplotlib_converters()
+#     np.random.seed(0)
     
-    plt.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
-    plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
-    plt.plot(time, Z_score2, label='Z score')
-    plt.legend(loc=0, fontsize=30)
+#     # 파란색 배경이 있는지 확인하는 플래그
+#     blue_background_detected = False
+
+#     if anomalies is not None and not isinstance(anomalies, list):
+#         anomalies = [anomalies]
+
+#     # 현재 날짜 및 시간을 기반으로 폴더 이름 생성
+#     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = os.path.join('static', current_time)
+
+#     # 폴더가 없으면 생성
+#     if not os.path.exists(folder_name):
+#         os.makedirs(folder_name)
+
+#     # 결과 이미지 파일의 경로 설정
+#     image_path = os.path.join(folder_name, 'plot.png')
+
+#     # 결과를 이미지 파일로 저장
+#     fig = plt.figure(figsize=(30, 12))
+#     ax = fig.add_subplot(111)
     
-    colors = ['red'] + ['blue'] * (len(anomalies) - 1)
+#     # 마지막 100개 데이터 선택
+    # latest_data_size = 100
+    # max_len = min(length_anom, latest_data_size)
+    # time = range(length_anom - latest_data_size, length_anom)
+    # Z_score2 = Z_score1[-latest_data_size:]  # 마지막 100개
+    # X_signal = []
+
+    # for kk in range(-latest_data_size, 0):
+    #     X_signal.append(X[kk, 1])
+
+    # X_signal_2 = np.array(X_signal)
     
-    for i, anomaly in enumerate(anomalies):
-        if anomaly is not None and not isinstance(anomaly, list):
-            anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
+#     plt.plot(time, 3 * X_signal_2[:, 0], label='3*PCA1')
+#     plt.plot(time, 3 * X_signal_2[:, 1], label='3*PCA2')
+#     plt.plot(time, Z_score2, label='Z score')
+#     plt.legend(loc=0, fontsize=30)
+    
+#     colors = ['red'] + ['blue'] * (len(anomalies) - 1)
+    
+#     for i, anomaly in enumerate(anomalies):
+#         if anomaly is not None and not isinstance(anomaly, list):
+#             anomaly = list(anomaly[['start', 'end']].itertuples(index=False))
         
-        for _, anom in enumerate(anomaly):
-            t1 = anom[0]
-            t2 = anom[1]
+#         for _, anom in enumerate(anomaly):
+#             t1 = anom[0]
+#             t2 = anom[1]
 
-            # 이상치 구간이 최신 100개 데이터 내에 포함되는지 확인
-            if (t1 < length_anom and t2 >= length_anom - latest_data_size):
-                t1_clipped = max(t1, length_anom - latest_data_size)
-                t2_clipped = min(t2, length_anom)
-                plt.axvspan(t1_clipped, t2_clipped, color=colors[i], alpha=0.2)
-                if colors[i] == 'blue':
-                    blue_background_detected = True
+#             # 이상치 구간이 최신 100개 데이터 내에 포함되는지 확인
+#             if (t1 < length_anom and t2 >= length_anom - latest_data_size):
+#                 t1_clipped = max(t1, length_anom - latest_data_size)
+#                 t2_clipped = min(t2, length_anom)
+#                 plt.axvspan(t1_clipped, t2_clipped, color=colors[i], alpha=0.2)
+#                 if colors[i] == 'blue':
+#                     blue_background_detected = True
 
-    plt.title('Test07_NG_dchg: Red = True Anomaly, Blue = Predicted Anomaly', size=34)
-    plt.ylabel('PCA1, PCA2, Z score', size=30)
-    plt.xlabel('Time', size=30)
-    plt.xticks(size=26)
-    plt.yticks(size=26)
-    plt.xlim([time[0], time[-1]])
+#     plt.title('Test07_NG_dchg: Red = True Anomaly, Blue = Predicted Anomaly', size=34)
+#     plt.ylabel('PCA1, PCA2, Z score', size=30)
+#     plt.xlabel('Time', size=30)
+#     plt.xticks(size=26)
+#     plt.yticks(size=26)
+#     plt.xlim([time[0], time[-1]])
 
-    # 결과를 이미지 파일로 저장
-    fig.savefig(image_path)
-    plt.close(fig)
+#     # 결과를 이미지 파일로 저장
+#     fig.savefig(image_path)
+#     plt.close(fig)
 
-    return image_path, 'Anomaly Detected' if blue_background_detected else 'Good State'#############################################
+#     return image_path, 'Anomaly Detected' if blue_background_detected else 'Good State'#############################################
 
 # def save_plot_to_file(anomalies, length_anom, X, Z_score1):
 #     register_matplotlib_converters()
@@ -625,28 +704,45 @@ def save_plot_to_file(anomalies, length_anom, X, Z_score1):
 #     return image_path
     # return image_path.replace('\\', '/')
 
-# 최신 100개의 데이터만 시각화 진행
-def save_vol_plot_to_file(vol_df, total_data_count):
+# 최신 100개의 데이터만 시각화 진행 --> 또 수정
+# def save_vol_plot_to_file(vol_df, total_data_count):
+#     latest_data_size = 100
+#     vol_df = vol_df.tail(latest_data_size)
+
+#     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = os.path.join('static', 'static_vol', current_time)
+#     if not os.path.exists(folder_name):
+#         os.makedirs(folder_name)
+#     image_path = os.path.join(folder_name, 'plot.png')
+
+#     fig, ax = plt.subplots(figsize=(30, 12))
+#     for column in vol_df.columns:
+#         ax.plot(range(total_data_count - latest_data_size, total_data_count), vol_df[column], label=column)
+#     ax.set_title('Voltage Data Over Time (Last 100 Data Points)', size=34)
+#     ax.set_xlabel('Time')
+#     ax.set_ylabel('Voltage')
+#     fig.savefig(image_path)
+#     plt.close(fig)
+
+#     return image_path
+## Chart.js를 반영한 전압 데이터
+def prepare_vol_data(vol_df, total_data_count):
     latest_data_size = 100
     vol_df = vol_df.tail(latest_data_size)
+    time = list(range(total_data_count - latest_data_size, total_data_count))
 
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = os.path.join('static', 'static_vol', current_time)
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-    image_path = os.path.join(folder_name, 'plot.png')
+    voltage_datasets = []
+    for col in vol_df.columns:
+        voltage_datasets.append({
+            'label': col,  # 열 이름
+            'data': vol_df[col].tolist()  # 해당 열의 데이터
+        })
 
-    fig, ax = plt.subplots(figsize=(30, 12))
-    for column in vol_df.columns:
-        ax.plot(range(total_data_count - latest_data_size, total_data_count), vol_df[column], label=column)
-    ax.set_title('Voltage Data Over Time (Last 100 Data Points)', size=34)
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Voltage')
-    fig.savefig(image_path)
-    plt.close(fig)
-
-    return image_path
-
+    data = {
+        'time': time,
+        'datasets': voltage_datasets
+    }
+    return data
 
 
 ## 온도
@@ -671,25 +767,43 @@ def save_vol_plot_to_file(vol_df, total_data_count):
     # return image_path.replace('\\', '/')
 
 # 최신 100개의 데이터만 시각화 진행
-def save_tem_plot_to_file(tem_df, total_data_count):
+# def save_tem_plot_to_file(tem_df, total_data_count):
+#     latest_data_size = 100
+#     tem_df = tem_df.tail(latest_data_size)
+
+#     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = os.path.join('static', 'static_tem', current_time)
+#     if not os.path.exists(folder_name):
+#         os.makedirs(folder_name)
+#     image_path = os.path.join(folder_name, 'plot.png')
+
+#     fig, ax = plt.subplots(figsize=(30, 12))
+#     for column in tem_df.columns:
+#         ax.plot(range(total_data_count - latest_data_size, total_data_count), tem_df[column], label=column)
+#     ax.set_title('Temperature Data Over Time (Last 100 Data Points)', size=34)
+#     ax.set_xlabel('Time')
+#     ax.set_ylabel('Temperature')
+#     fig.savefig(image_path)
+#     plt.close(fig)
+
+#     return image_path
+
+## Chart.js를 반영한 전압 데이터
+def prepare_tem_data(tem_df, total_data_count):
     latest_data_size = 100
     tem_df = tem_df.tail(latest_data_size)
+    time = list(range(total_data_count - latest_data_size, total_data_count))
 
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = os.path.join('static', 'static_tem', current_time)
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-    image_path = os.path.join(folder_name, 'plot.png')
+    temperature_datasets = []
+    for col in tem_df.columns:
+        temperature_datasets.append({
+            'label': col,  # 열 이름
+            'data': tem_df[col].tolist()  # 해당 열의 데이터
+        })
 
-    fig, ax = plt.subplots(figsize=(30, 12))
-    for column in tem_df.columns:
-        ax.plot(range(total_data_count - latest_data_size, total_data_count), tem_df[column], label=column)
-    ax.set_title('Temperature Data Over Time (Last 100 Data Points)', size=34)
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Temperature')
-    fig.savefig(image_path)
-    plt.close(fig)
-
-    return image_path
-
+    data = {
+        'time': time,
+        'datasets': temperature_datasets
+    }
+    return data
 

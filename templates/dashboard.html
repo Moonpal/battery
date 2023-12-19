@@ -36,11 +36,11 @@ Coded by www.creative-tim.com
             </div>
           </div>
         </div>
-        <div class="card-footer ">
+        <div class="card-footer">
           <hr>
           <div class="stats">
             <i class="fa fa-refresh"></i>
-            Update Now
+            <button id="start-analysis-btn" class="btn btn-primary">분석 시작</button>
           </div>
         </div>
       </div>
@@ -99,7 +99,7 @@ Coded by www.creative-tim.com
         </div>
       </div>
     </div>
-    <div class="col-lg-3 col-md-6 col-sm-6">
+    <!-- <div class="col-lg-3 col-md-6 col-sm-6">
       <div class="card card-stats">
         <div class="card-body ">
           <div class="row">
@@ -125,64 +125,71 @@ Coded by www.creative-tim.com
           </div>
         </div>
       </div>
+    </div> -->
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card ">
+        <div class="card-header">
+          <h5 class="card-title">Detecting Anomaly</h5>
+          <p class="card-category">Line Chart with Points</p>
+        </div>
+        <div class="card-body">
+          <canvas id="anomalyChart"></canvas>
+          <!--##########################################################################-->
+        </div>
+        <div class="card-footer">
+          <div class="chart-legend">
+            <!-- <i class="fa fa-circle text-info"></i> Tesla Model S
+            <i class="fa fa-circle text-warning"></i> BMW 5 Series -->
+          </div>
+          <hr />
+          <div class="card-stats">
+            <i class="fa fa-check"></i> Data information certified
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="row">
     <div class="col-md-12">
       <div class="card ">
-        <div class="card-header ">
-          <h5 class="card-title">Users Behavior</h5>
-          <p class="card-category">24 Hours performance</p>
+        <div class="card-header">
+          <h5 class="card-title">Voltage Plot</h5>
+          <p class="card-category">Line Chart with Points</p>
         </div>
-        <div class="card-body ">
-          <canvas id=chartHours width="400" height="100"></canvas>
+        <div class="card-body">
+          <canvas id="volChart"></canvas>
+          <!--##########################################################################-->
         </div>
-        <div class="card-footer ">
-          <hr>
-          <div class="stats">
-            <i class="fa fa-history"></i> Updated 3 minutes ago
+        <div class="card-footer">
+          <div class="chart-legend">
+            <!-- <i class="fa fa-circle text-info"></i> Tesla Model S
+            <i class="fa fa-circle text-warning"></i> BMW 5 Series -->
+          </div>
+          <hr />
+          <div class="card-stats">
+            <i class="fa fa-check"></i> Data information certified
           </div>
         </div>
       </div>
     </div>
   </div>
   <div class="row">
-    <div class="col-md-4">
+    <div class="col-md-12">
       <div class="card ">
-        <div class="card-header ">
-          <h5 class="card-title">Email Statistics</h5>
-          <p class="card-category">Last Campaign Performance</p>
-        </div>
-        <div class="card-body ">
-          <canvas id="chartEmail"></canvas>
-        </div>
-        <div class="card-footer ">
-          <div class="legend">
-            <i class="fa fa-circle text-primary"></i> Opened
-            <i class="fa fa-circle text-warning"></i> Read
-            <i class="fa fa-circle text-danger"></i> Deleted
-            <i class="fa fa-circle text-gray"></i> Unopened
-          </div>
-          <hr>
-          <div class="stats">
-            <i class="fa fa-calendar"></i> Number of emails sent
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-8">
-      <div class="card card-chart">
         <div class="card-header">
-          <h5 class="card-title">NASDAQ: AAPL</h5>
+          <h5 class="card-title">Temperature Plot</h5>
           <p class="card-category">Line Chart with Points</p>
         </div>
         <div class="card-body">
-          <canvas id="speedChart" width="400" height="100"></canvas>
+          <canvas id="temChart"></canvas>
+          <!--##########################################################################-->
         </div>
         <div class="card-footer">
           <div class="chart-legend">
-            <i class="fa fa-circle text-info"></i> Tesla Model S
-            <i class="fa fa-circle text-warning"></i> BMW 5 Series
+            <!-- <i class="fa fa-circle text-info"></i> Tesla Model S
+            <i class="fa fa-circle text-warning"></i> BMW 5 Series -->
           </div>
           <hr />
           <div class="card-stats">
@@ -193,5 +200,330 @@ Coded by www.creative-tim.com
     </div>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.socket.io/socket.io-3.0.3.min.js"></script>
+<!-- Chart.js -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script> -->
+<!-- chartjs-plugin-annotation 버전 2.2.1 -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1"></script>
+
+<!-- <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
+  integrity="sha384-mZLF4UVrpi/QTWPA7BjNPEnkIfRFn4ZEO3Qt/HFklTJBj/gBOV8G3HcKn4NfQblz" crossorigin="anonymous"></script> -->
+
+<script>
+  // 차트 객체를 초기화하는 함수
+  // function initializeChart(chartId, displayLegend) {
+  //   var ctx = document.getElementById(chartId).getContext('2d');
+  //   return new Chart(ctx, {
+  //     type: 'line',
+  //     data: {
+  //       labels: [],
+  //       datasets: []
+  //     },
+  //     options: {
+  //       legend: {
+  //         display: displayLegend // 범주 표시 여부
+  //       },
+  //       tooltips: {
+  //         callbacks: {
+  //           label: function (tooltipItem, data) {
+  //             var label = data.datasets[tooltipItem.datasetIndex].label || '';
+  //             if (label) {
+  //               label += ': ';
+  //             }
+  //             label += Math.round(tooltipItem.yLabel * 100) / 100;
+  //             return label;
+  //           }
+  //         }
+  //       }
+  //       // 기타 차트 옵션 설정
+  //     }
+  //   });
+  // }
+
+  // // 차트 초기화
+  // var anomalyChart = initializeChart('anomalyChart', true);  // 첫 번째 차트의 범주는 표시
+  // var volChart = initializeChart('volChart', false);         // 온도와 전압 차트의 범주는 숨김
+  // var temChart = initializeChart('temChart', false);
+
+  // // Socket.IO 로직
+  // var socket = io.connect('http://' + document.domain + ':' + location.port + '/test');
+
+  // // 이상 구간 데이터 업데이트 이벤트 처리
+  // socket.on('update_anomaly_data', function (data) {
+  //   anomalyChart.data.labels = data.time;
+  //   anomalyChart.data.datasets = data.datasets.map(dataset => {
+  //     // let color;
+  //     // switch (dataset.label) {
+  //     //   case 'PCA1':
+  //     //     color = 'rgba(100, 100, 100, 1)';
+  //     //     break;
+  //     //   case 'PCA2':
+  //     //     color = 'rgba(200, 200, 200, 1)';
+  //     //     break;
+  //     //   case 'Z_score':
+  //     //     color = 'rgba(255, 165, 0, 1)';
+  //     //     break;
+  //     //   default:
+  //     //     color = 'rgba(0, 0, 0, 1)';
+  //     // }
+  //     return {
+  //       label: dataset.label,
+  //       data: dataset.data,
+  //       borderColor: color,
+  //       backgroundColor: color,
+  //       borderWidth: dataset.label === 'Z_score' ? 3 : 1
+  //     };
+  //   });
+  //   anomalyChart.update();
+
+  //   if (data.anomaly_pred && data.anomaly_pred.length > 0) {
+  //     displayAlert("이상 구간이 예측되었습니다!");
+  //   }
+  // });
+
+  // // 전압 데이터 업데이트 이벤트 처리
+  // socket.on('update_vol_data', function (data) {
+  //   volChart.data.labels = data.time;
+  //   volChart.data.datasets = data.datasets.map(dataset => ({
+  //     label: dataset.label,
+  //     data: dataset.data
+  //     // 추가적인 스타일링 옵션 가능
+  //   }));
+  //   volChart.update();
+  // });
+
+  // // 온도 데이터 업데이트 이벤트 처리
+  // socket.on('update_tem_data', function (data) {
+  //   temChart.data.labels = data.time;
+  //   temChart.data.datasets = data.datasets.map(dataset => ({
+  //     label: dataset.label,
+  //     data: dataset.data
+  //     // 추가적인 스타일링 옵션 가능
+  //   }));
+  //   temChart.update();
+  // });
+
+  // // 알림창 표시 함수
+  // function displayAlert(message) {
+  //   var alertBox = document.createElement('div');
+  //   alertBox.className = 'alert-box';
+  //   alertBox.textContent = message;
+  //   alertBox.style.position = 'fixed';
+  //   alertBox.style.top = '50%';
+  //   alertBox.style.left = '50%';
+  //   alertBox.style.transform = 'translate(-50%, -50%)';
+  //   alertBox.style.backgroundColor = 'white';
+  //   alertBox.style.border = '1px solid black';
+  //   alertBox.style.padding = '20px';
+  //   alertBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+  //   alertBox.style.zIndex = '1000';
+
+  //   setTimeout(function () {
+  //     if (alertBox.parentNode) {
+  //       alertBox.parentNode.removeChild(alertBox);
+  //     }
+  //   }, 5000);
+
+  //   document.body.appendChild(alertBox);
+  // }
+
+  // // 분석 시작 버튼 이벤트 리스너
+  // document.getElementById('start-analysis-btn').addEventListener('click', function () {
+  //   startAnalysis();
+  // });
+
+  // function startAnalysis() {
+  //   fetch('/start_analysis', { method: 'POST' })
+  //     .then(response => {
+  //       if (response.ok) {
+  //         console.log("분석 시작됨");
+  //         displayAlert("분석이 시작되었습니다.");
+  //       }
+  //     })
+  //     .catch(error => {
+  //       console.error('Error:', error);
+  //       displayAlert("분석 시작 중 오류가 발생했습니다.");
+  //     });
+  // }
+
+  // 차트 객체를 초기화하는 함수
+  function initializeChart(chartId, displayLegend) {
+    var ctx = document.getElementById(chartId).getContext('2d');
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{ /* 데이터셋 설정 */ }]
+      },
+      options: {
+        legend: {
+          display: displayLegend // 범주 표시 여부를 설정합니다.
+        },
+        tooltips: {
+          callbacks: {
+            label: function (tooltipItem, data) {
+              var label = data.datasets[tooltipItem.datasetIndex].label || '';
+              if (label) {
+                label += ': ';
+              }
+              label += Math.round(tooltipItem.yLabel * 100) / 100;
+              return label;
+            }
+          }
+        }
+        // 기타 옵션 설정
+      }
+    });
+  }
+
+  // 이상 구간을 표시하는 함수
+  function createAnnotations(anomalyData) {
+    const annotations = [];
+
+    // 실제 이상 구간에 대한 주석 추가
+    anomalyData.anomaly_gt.forEach(anomaly => {
+      annotations.push({
+        type: 'box',
+        xMin: anomaly.start,
+        xMax: anomaly.end,
+        backgroundColor: 'rgba(255, 0, 0, 0.3)' // 빨간색 반투명 배경
+      });
+    });
+
+    // 예측된 이상 구간에 대한 주석 추가
+    anomalyData.anomaly_pred.forEach(anomaly => {
+      annotations.push({
+        type: 'box',
+        xMin: anomaly.start,
+        xMax: anomaly.end,
+        backgroundColor: 'rgba(0, 0, 255, 0.3)' // 파란색 반투명 배경
+      });
+    });
+
+    return annotations;
+  }
+
+  // 첫 번째 차트는 범주를 표시합니다.
+  var anomalyChart = initializeChart('anomalyChart', true);
+
+  // 온도와 전압 차트는 범주를 숨깁니다.
+  var volChart = initializeChart('volChart', false);
+  var temChart = initializeChart('temChart', false);
+
+
+  // Socket.IO 로직
+  var socket = io.connect('http://' + document.domain + ':' + location.port + '/test');
+
+  // 데이터 업데이트 이벤트 처리
+  socket.on('update_anomaly_data', function (data) {
+    const annotations = createAnnotations(data);
+
+    // 각 데이터셋에 대한 색상 지정
+    anomalyChart.data.labels = data.time;
+    anomalyChart.data.datasets = data.datasets.map(dataset => {
+      let color;
+      if (dataset.label === 'PCA1') {
+        color = '#A9A9A9'; // 진한 회색
+      } else if (dataset.label === 'PCA2') {
+        color = '#D3D3D3'; // 연한 회색
+      } else if (dataset.label === 'Z_score') {
+        color = '#FF8C00'; // 진한 주황색
+      }
+
+      return {
+        label: dataset.label,
+        data: dataset.data,
+        borderColor: color,
+        backgroundColor: color,
+        fill: false // 배경색 채우기 없음
+      };
+    });
+
+    // 주석 추가
+    anomalyChart.options.annotation = {
+      annotations: annotations
+    };
+
+    anomalyChart.update();
+
+    // 이상 구간 확인 및 알람 표시
+    if (data.anomaly_pred && data.anomaly_pred.length > 0) {
+      displayAlert("이상 구간이 예측되었습니다!");
+    }
+  });
+
+
+  socket.on('update_vol_data', function (data) {
+    volChart.data.labels = data.time;
+    volChart.data.datasets = data.datasets.map(dataset => ({
+      label: dataset.label,
+      data: dataset.data,
+      // 여기에 추가적인 스타일링 옵션을 넣을 수 있습니다.
+    }));
+    volChart.update();
+  });
+
+  socket.on('update_tem_data', function (data) {
+    temChart.data.labels = data.time;
+    temChart.data.datasets = data.datasets.map(dataset => ({
+      label: dataset.label,
+      data: dataset.data,
+      // 여기에 추가적인 스타일링 옵션을 넣을 수 있습니다.
+    }));
+    temChart.update();
+  });
+
+  function displayAlert(message) {
+    // 알림창 엘리먼트 생성
+    var alertBox = document.createElement('div');
+    alertBox.className = 'alert-box';
+    alertBox.textContent = message;
+
+    // 알림창 스타일 설정
+    alertBox.style.position = 'fixed';
+    alertBox.style.top = '50%';
+    alertBox.style.left = '50%';
+    alertBox.style.transform = 'translate(-50%, -50%)';
+    alertBox.style.backgroundColor = 'white';
+    alertBox.style.border = '1px solid black';
+    alertBox.style.padding = '20px';
+    alertBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+    alertBox.style.zIndex = '1000';
+
+    // 알림창을 일정 시간 후에 자동으로 닫기
+    setTimeout(function () {
+      if (alertBox.parentNode) {
+        alertBox.parentNode.removeChild(alertBox);
+      }
+    }, 5000); // 3초 후에 알림창 닫기
+
+    // 알림창을 body에 추가
+    document.body.appendChild(alertBox);
+  }
+
+
+  document.getElementById('start-analysis-btn').addEventListener('click', function () {
+    startAnalysis();
+  });
+
+  function startAnalysis() {
+    fetch('/start_analysis', { method: 'POST' })
+      .then(response => {
+        if (response.ok) {
+          console.log("분석 시작됨");
+          displayAlert("분석이 시작되었습니다.");
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        displayAlert("분석 시작 중 오류가 발생했습니다.");
+      });
+  }
+
+</script>
+
+
 
 {% endblock %}

@@ -65,18 +65,18 @@ db = pymysql.connect(
 
 # 새로운 전역 변수로 누적된 DataFrame 설정
 accumulated_df = pd.DataFrame()
-# total_data_count = 0
+total_data_count = 0
 
 # 초기 데이터 로드 함수
 def load_initial_data():
     global accumulated_df
     global data_transfer_status
     global total_data_count
-    total_data_count = 4350 # 아래 LIMIT 4400과 함께 수정
+    total_data_count = 4400 # 아래 LIMIT 4400과 함께 수정
     
     try:
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4350")
+        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4400")
         initial_data = cursor.fetchall()
         accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
         accumulated_df = accumulated_df.iloc[:, 23:]
@@ -100,20 +100,16 @@ def send_data():
         while True:
             # 데이터베이스에서 다음 데이터 가져오기
             if last_time is None:
-                query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 10"
+                query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 50"
                 # query = "SELECT * FROM test08_ng_chg ORDER BY Time ASC LIMIT 10"
                 # query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 1"
             else:
                 # query = f"SELECT * FROM test08_ng_chg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
-                query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
+                query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 50"
             
             # 쿼리문 실행
             cursor.execute(query)
             data = cursor.fetchone()
-            
-            # 코드 살짝 수정
-            # cursor.execute(query, (last_time,))
-            # data = cursor.fetchall()
 
             if data:
                 # 데이터프레임으로 변환
@@ -127,7 +123,7 @@ def send_data():
                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
 
                 # total_data_count 업데이트
-                # total_data_count += len(sliced_df)
+                total_data_count += len(sliced_df)
 
                 # 10개씩 주기적으로 diff_smooth + PCA 수행
                 # if len(accumulated_df) >= 50 and len(accumulated_df) % 50 == 0:
@@ -142,7 +138,7 @@ def send_data():
                     # 초기화
                     y_hat, critic = None, None
                     # if len(X) >= 10:
-                    if len(X) >= 10:
+                    if len(X) >= 50:
                         try:
                             X, y, X_index, y_index = rolling_window_sequences(X, index, window_size=100, target_size=1, step_size=1, target_column=0)
                             y_hat, critic = predict(X)
@@ -166,41 +162,36 @@ def send_data():
                             vol_df = accumulated_df.iloc[:,:176]
                             tem_df = accumulated_df.iloc[:,176:]
 
-                            # 시각화 함수 호출
+                            anomaly_data = prepare_anomaly_data(anomalies, length_anom, X, Z_score1)
+                            vol_data = prepare_vol_data(vol_df, total_data_count)
+                            tem_data = prepare_tem_data(tem_df, total_data_count)
+
+                            socketio.emit('update_anomaly_data', anomaly_data, namespace='/test')
+                            socketio.emit('update_vol_data', vol_data, namespace='/test')
+                            socketio.emit('update_tem_data', tem_data, namespace='/test')
+
+                            ###########################################################################################################
+                            # 시각화 함수 호출 
                             # image_path_vol = save_vol_plot_to_file(vol_df)
                             # image_path_tem = save_tem_plot_to_file(tem_df)
-                            image_path_vol = save_vol_plot_to_file(vol_df,total_data_count)
-                            image_path_tem = save_tem_plot_to_file(tem_df,total_data_count)
-                            # image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores)
-                            image_path, status = save_plot_to_file(anomalies, length_anom, X, Z_score1)
-                            print(status)
+                            # image_path_vol = save_vol_plot_to_file(vol_df,total_data_count)
+                            # image_path_tem = save_tem_plot_to_file(tem_df,total_data_count)
+                            # # image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores)
+                            # image_path, status = save_plot_to_file(anomalies, length_anom, X, Z_score1)
+                            # print(status)
                             
-                            if status == 'Anomaly Detected':
-                                blue_graph_detected = True
-                                socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
-                                socketio.emit('blue_graph_detected', namespace='/test')
-                                # 알림 전송 후 상태 초기화
-                                blue_graph_detected = False
-
-                            # 이미지 파일의 경로를 클라이언트에 전송
-                            socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
-                            socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
-                            socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
-                            # 이미지 파일의 경로를 클라이언트에 전송################################################################
-                            # # socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
-                            # if status == 'stop':
-                            #     data_transfer_status = 'paused'
+                            # if status == 'Anomaly Detected':
                             #     blue_graph_detected = True
-                            #     # 파란색 그래프 감지 이벤트를 클라이언트에게 발송
                             #     socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
-                            #     socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
-                            #     socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
                             #     socketio.emit('blue_graph_detected', namespace='/test')
-                            # elif status == 'continue':
-                            #     socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
+                            #     # 알림 전송 후 상태 초기화
+                            #     blue_graph_detected = False
 
-                            
-                            
+                            # # 이미지 파일의 경로를 클라이언트에 전송
+                            # socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
+                            # socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
+                            # socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
+                            ###########################################################################################################
                     else:
                         # 예외가 발생하거나 데이터가 충분하지 않은 경우에 대한 처리
                         pass
@@ -226,11 +217,6 @@ def index():
     # 기본 홈페이지를 렌더링합니다.
     return render_template('dashboard.html')
 
-# @app.route('/')
-# def index():
-#     # 기본 홈페이지를 렌더링합니다.
-#     return render_template('index.html')
-
 @app.route('/start_analysis', methods=['POST'])
 def start_analysis():
     # 분석을 시작하는 로직을 여기에 작성합니다.
@@ -245,13 +231,6 @@ def test_connect():
     # 클라이언트가 Socket.IO를 통해 연결되었을 때 수행할 작업.
     print('Client connected via Socket.IO')
     # 여기에서 필요한 데이터 전송 또는 기타 작업을 수행할 수 있습니다.
-
-@socketio.on('some_event')  # 이벤트 처리를 위한 데코레이터와 함수
-def handle_my_custom_event(data):
-    global blue_graph_detected
-    # blue_graph_detected 변수 상태에 따라 클라이언트에게 메시지 전송
-    if blue_graph_detected:
-        emit('blue_graph_detected')
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
