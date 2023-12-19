@@ -265,11 +265,11 @@ def prepare_anomaly_data(anomalies, length_anom, X, Z_score1):
     datasets = [
         {
             'label': 'PCA1',
-            'data': list(1.5 * X_signal_2[:, 0])
+            'data': list(2 * X_signal_2[:, 0])
         },
         {
             'label': 'PCA2',
-            'data': list(1.5 * X_signal_2[:, 1])
+            'data': list(2 * X_signal_2[:, 1])
         },
         {
             'label': 'Z_score',
