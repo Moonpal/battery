@@ -72,11 +72,11 @@ def load_initial_data():
     global accumulated_df
     global data_transfer_status
     global total_data_count
-    total_data_count = 4400 # 아래 LIMIT 4400과 함께 수정
+    total_data_count = 4490 # 아래 LIMIT 4400과 함께 수정
     
     try:
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4400")
+        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4490")
         initial_data = cursor.fetchall()
         accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
         accumulated_df = accumulated_df.iloc[:, 23:]
@@ -121,6 +121,10 @@ def send_data():
     
                 # 원본 데이터프레임에 현재 데이터 누적
                 accumulated_df = pd.concat([accumulated_df, sliced_df], ignore_index=True)
+                
+                # 전압,온도 데이터 추출
+                vol_df = accumulated_df.iloc[:,:176]
+                tem_df = accumulated_df.iloc[:,176:]
 
                 # total_data_count 업데이트
                 total_data_count += len(sliced_df)
@@ -138,7 +142,7 @@ def send_data():
                     # 초기화
                     y_hat, critic = None, None
                     # if len(X) >= 10:
-                    if len(X) >= 50:
+                    if len(X) >= 10:
                         try:
                             X, y, X_index, y_index = rolling_window_sequences(X, index, window_size=100, target_size=1, step_size=1, target_column=0)
                             y_hat, critic = predict(X)
@@ -158,11 +162,23 @@ def send_data():
                         # fixed_threshold = anomaly._fixed_threshold(final_scores)
                         if anomalies is not None:
                             print(anomalies)
-                            # 전압,온도 데이터 추출
+                            # # 전압,온도 데이터 추출
                             vol_df = accumulated_df.iloc[:,:176]
                             tem_df = accumulated_df.iloc[:,176:]
+                            print(vol_df)
+                            print(tem_df)
+                            
+                            columns_with_values_over_4 = []
+
+                            # 각 열에 대해 반복
+                            for column in vol_df:
+                                if any(vol_df[column] > 4):
+                                    columns_with_values_over_4.append(column)
+
+                            print(columns_with_values_over_4)
 
                             anomaly_data = prepare_anomaly_data(anomalies, length_anom, X, Z_score1)
+                            # print(anomaly_data)
                             vol_data = prepare_vol_data(vol_df, total_data_count)
                             tem_data = prepare_tem_data(tem_df, total_data_count)
 

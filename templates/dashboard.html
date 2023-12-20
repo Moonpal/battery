@@ -94,7 +94,7 @@ Coded by www.creative-tim.com
           <hr>
           <div class="stats">
             <i class="fa fa-clock-o"></i>
-            In the last hour
+            Start Time: <span id="anomaly-times"></span>
           </div>
         </div>
       </div>
@@ -202,13 +202,6 @@ Coded by www.creative-tim.com
 </div>
 
 <script src="https://cdn.socket.io/socket.io-3.0.3.min.js"></script>
-<!-- Chart.js -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
-<!-- chartjs-plugin-annotation 버전 2.2.1 -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1"></script> -->
-
-<!-- <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
-  integrity="sha384-mZLF4UVrpi/QTWPA7BjNPEnkIfRFn4ZEO3Qt/HFklTJBj/gBOV8G3HcKn4NfQblz" crossorigin="anonymous"></script> -->
 
 <script>
   // 차트 객체를 초기화하는 함수
@@ -218,7 +211,9 @@ Coded by www.creative-tim.com
       type: 'line',
       data: {
         labels: [],
-        datasets: [{ /* 데이터셋 설정 */ }]
+        datasets: [{ /* 데이터셋 설정 */ }],
+        anomaly_gt: [], // 초기화 추가
+        anomaly_pred: [] // 초기화 추가
       },
       options: {
         legend: {
@@ -235,6 +230,9 @@ Coded by www.creative-tim.com
               return label;
             }
           }
+        },
+        annotation: { // 주석 설정 추가
+          annotations: [] // 초기에는 빈 배열로 설정
         }
         // 기타 옵션 설정
       }
@@ -277,31 +275,57 @@ Coded by www.creative-tim.com
   }
 
   // 이상 구간을 표시하는 함수
-  function createAnnotations(anomalyData) {
-    const annotations = [];
+  // function createAnnotations(anomalyData) {
+  //   const annotations = [];
 
-    // 실제 이상 구간에 대한 주석 추가
-    anomalyData.anomaly_gt.forEach(anomaly => {
-      annotations.push({
-        type: 'box',
-        xMin: anomaly.start,
-        xMax: anomaly.end,
-        backgroundColor: 'rgba(255, 0, 0, 0.3)' // 빨간색 반투명 배경
-      });
-    });
+  // 실제 이상 구간에 대한 주석 추가
+  //   anomalyData.anomaly_gt.forEach(anomaly => {
+  //     annotations.push({
+  //       type: 'box',
+  //       xMin: anomaly.start,
+  //       xMax: anomaly.end,
+  //       backgroundColor: 'rgba(255, 0, 0, 0.3)' // 빨간색 반투명 배경
+  //     });
+  //   });
 
-    // 예측된 이상 구간에 대한 주석 추가
-    anomalyData.anomaly_pred.forEach(anomaly => {
-      annotations.push({
-        type: 'box',
-        xMin: anomaly.start,
-        xMax: anomaly.end,
-        backgroundColor: 'rgba(0, 0, 255, 0.3)' // 파란색 반투명 배경
-      });
-    });
+  //   // 예측된 이상 구간에 대한 주석 추가
+  //   anomalyData.anomaly_pred.forEach(anomaly => {
+  //     annotations.push({
+  //       type: 'box',
+  //       xMin: anomaly.start,
+  //       xMax: anomaly.end,
+  //       backgroundColor: 'rgba(0, 0, 255, 0.3)' // 파란색 반투명 배경
+  //     });
+  //   });
 
-    return annotations;
-  }
+  //   return annotations;
+  // }
+  // function createAnnotations(anomalyData) {
+  //   const annotations = [];
+
+  //   // 실제 이상 구간에 대한 주석 추가
+  //   anomalyData.anomaly_gt.forEach(anomaly => {
+  //     annotations.push({
+  //       type: 'box',
+  //       xMin: anomaly.start,
+  //       xMax: anomaly.end,
+  //       backgroundColor: 'rgba(255, 0, 0, 0.3)' // 빨간색 반투명 배경
+  //     });
+  //   });
+
+  //   // 예측된 이상 구간에 대한 주석 추가
+  //   anomalyData.anomaly_pred.forEach(anomaly => {
+  //     annotations.push({
+  //       type: 'box',
+  //       xMin: anomaly.start,
+  //       xMax: anomaly.end,
+  //       backgroundColor: 'rgba(0, 0, 255, 0.3)' // 파란색 반투명 배경
+  //     });
+  //   });
+
+  //   return annotations;
+  // } //현재 하던중####################################################
+
 
   // 첫 번째 차트는 범주를 표시합니다.
   var anomalyChart = initializeChart('anomalyChart');
@@ -316,41 +340,122 @@ Coded by www.creative-tim.com
 
   // 데이터 업데이트 이벤트 처리
   socket.on('update_anomaly_data', function (data) {
-    const annotations = createAnnotations(data);
-
-    // 각 데이터셋에 대한 색상 지정
+    // 차트 데이터 업데이트
     anomalyChart.data.labels = data.time;
     anomalyChart.data.datasets = data.datasets.map(dataset => {
       let color;
       if (dataset.label === 'PCA1') {
-        color = '#A9A9A9'; // 진한 회색
+        color = '#A9A9A9';
       } else if (dataset.label === 'PCA2') {
-        color = '#D3D3D3'; // 연한 회색
+        color = '#D3D3D3';
       } else if (dataset.label === 'Z_score') {
-        color = '#FF8C00'; // 진한 주황색
+        color = '#FF8C00';
       }
-
       return {
         label: dataset.label,
         data: dataset.data,
         borderColor: color,
         backgroundColor: color,
-        fill: false // 배경색 채우기 없음
+        fill: false
       };
     });
 
-    // 주석 추가
-    anomalyChart.options.annotation = {
-      annotations: annotations
-    };
+    // 주석(Annotations) 동적 생성
+    let annotations = [];
 
+    if (data.anomaly_gt) { // 존재 여부 확인
+      data.anomaly_gt.forEach(anomaly => {
+        annotations.push({
+          type: 'box',
+          xMin: anomaly.start,
+          xMax: anomaly.end,
+          backgroundColor: 'rgba(255, 0, 0, 0.3)'
+        });
+      });
+    }
+
+    if (data.anomaly_pred) { // 존재 여부 확인
+      data.anomaly_pred.forEach(anomaly => {
+        annotations.push({
+          type: 'box',
+          xMin: anomaly.start,
+          xMax: anomaly.end,
+          backgroundColor: 'rgba(0, 0, 255, 0.3)'
+        });
+      });
+    }
+
+    // 주석을 차트 옵션에 추가
+    // if (annotations.length > 0) {
+    //   if (!anomalyChart.options.annotation) {
+    //     anomalyChart.options.annotation = {};
+    //   }
+    //   anomalyChart.options.annotation.annotations = annotations;
+    // }
+    if (annotations.length > 0) {
+      anomalyChart.options.annotation = {
+        annotations: annotations
+      };
+    }
+
+    // 차트 업데이트
     anomalyChart.update();
-
     // 이상 구간 확인 및 알람 표시
     if (data.anomaly_pred && data.anomaly_pred.length > 0) {
       displayAlert("이상 구간이 예측되었습니다!");
     }
+
+    // anomaly_pred_data의 시작 시간을 웹 페이지에 표시
+    var anomalyTimesElement = document.getElementById('anomaly-times');
+    data.anomaly_pred.forEach(function (anomaly) {
+      console.log(anomaly); // 콘솔에 anomaly 객체 출력
+
+      // 여기서 'start_time' 대신 실제 속성명을 사용해야 합니다.
+      // 예를 들어, 'start' 또는 'startTime' 등
+      var startTime = anomaly.start; // or anomaly.start, anomaly.startTime 등
+
+      if (startTime && !anomalyTimesElement.innerHTML.includes(startTime)) {
+        anomalyTimesElement.innerHTML += startTime + ', ';
+      }
+    });
   });
+
+  // socket.on('update_anomaly_data', function (data) {
+  //   const annotations = createAnnotations(data);
+
+  //   // 각 데이터셋에 대한 색상 지정
+  //   anomalyChart.data.labels = data.time;
+  //   anomalyChart.data.datasets = data.datasets.map(dataset => {
+  //     let color;
+  //     if (dataset.label === 'PCA1') {
+  //       color = '#A9A9A9'; // 진한 회색
+  //     } else if (dataset.label === 'PCA2') {
+  //       color = '#D3D3D3'; // 연한 회색
+  //     } else if (dataset.label === 'Z_score') {
+  //       color = '#FF8C00'; // 진한 주황색
+  //     }
+
+  //     return {
+  //       label: dataset.label,
+  //       data: dataset.data,
+  //       borderColor: color,
+  //       backgroundColor: color,
+  //       fill: false // 배경색 채우기 없음
+  //     };
+  //   });
+
+  //   // 주석 추가
+  //   anomalyChart.options.annotation = {
+  //     annotations: annotations
+  //   };
+
+  //   anomalyChart.update();
+
+  //   // 이상 구간 확인 및 알람 표시
+  //   if (data.anomaly_pred && data.anomaly_pred.length > 0) {
+  //     displayAlert("이상 구간이 예측되었습니다!");
+  //   }
+  // });
 
 
   socket.on('update_vol_data', function (data) {
