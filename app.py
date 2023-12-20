@@ -72,11 +72,11 @@ def load_initial_data():
     global accumulated_df
     global data_transfer_status
     global total_data_count
-    total_data_count = 4490 # 아래 LIMIT 4400과 함께 수정
+    total_data_count = 4200 # 아래 LIMIT 4400과 함께 수정
     
     try:
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4490")
+        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4200")
         initial_data = cursor.fetchall()
         accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
         accumulated_df = accumulated_df.iloc[:, 23:]
@@ -100,12 +100,12 @@ def send_data():
         while True:
             # 데이터베이스에서 다음 데이터 가져오기
             if last_time is None:
-                query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 50"
+                query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 10"
                 # query = "SELECT * FROM test08_ng_chg ORDER BY Time ASC LIMIT 10"
                 # query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 1"
             else:
                 # query = f"SELECT * FROM test08_ng_chg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
-                query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 50"
+                query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
             
             # 쿼리문 실행
             cursor.execute(query)

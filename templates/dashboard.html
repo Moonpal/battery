@@ -363,35 +363,34 @@ Coded by www.creative-tim.com
     // 주석(Annotations) 동적 생성
     let annotations = [];
 
-    if (data.anomaly_gt) { // 존재 여부 확인
-      data.anomaly_gt.forEach(anomaly => {
-        annotations.push({
-          type: 'box',
-          xMin: anomaly.start,
-          xMax: anomaly.end,
-          backgroundColor: 'rgba(255, 0, 0, 0.3)'
-        });
+    // 현재 차트의 시간 범위를 확인
+    let chartStartTime = Math.min(anomalyChart.data.time);
+    let chartEndTime = Math.max(anomalyChart.data.time);
+
+    // 이상 구간이 현재 차트 시간 범위 내에 있는지 확인
+    const addAnnotations = (anomalyData, backgroundColor) => {
+      anomalyData.forEach(anomaly => {
+        if (anomaly.start <= chartEndTime && anomaly.end >= chartStartTime) {
+          // 이상 구간이 현재 차트 범위와 겹칠 경우에만 주석 추가
+          annotations.push({
+            type: 'box',
+            xMin: Math.max(anomaly.start, chartStartTime),
+            xMax: Math.min(anomaly.end, chartEndTime),
+            backgroundColor: backgroundColor
+          });
+        }
       });
+    };
+
+    if (data.anomaly_gt) {
+      addAnnotations(data.anomaly_gt, 'rgba(255, 0, 0, 0.3)'); // 실제 이상 구간 주석 추가
     }
 
-    if (data.anomaly_pred) { // 존재 여부 확인
-      data.anomaly_pred.forEach(anomaly => {
-        annotations.push({
-          type: 'box',
-          xMin: anomaly.start,
-          xMax: anomaly.end,
-          backgroundColor: 'rgba(0, 0, 255, 0.3)'
-        });
-      });
+    if (data.anomaly_pred) {
+      addAnnotations(data.anomaly_pred, 'rgba(0, 0, 255, 0.3)'); // 예측된 이상 구간 주석 추가
     }
 
     // 주석을 차트 옵션에 추가
-    // if (annotations.length > 0) {
-    //   if (!anomalyChart.options.annotation) {
-    //     anomalyChart.options.annotation = {};
-    //   }
-    //   anomalyChart.options.annotation.annotations = annotations;
-    // }
     if (annotations.length > 0) {
       anomalyChart.options.annotation = {
         annotations: annotations
@@ -402,7 +401,7 @@ Coded by www.creative-tim.com
     anomalyChart.update();
     // 이상 구간 확인 및 알람 표시
     if (data.anomaly_pred && data.anomaly_pred.length > 0) {
-      displayAlert("이상 구간이 예측되었습니다!");
+      displayAlert2("이상 구간이 예측되었습니다!");
     }
 
     // anomaly_pred_data의 시작 시간을 웹 페이지에 표시
@@ -501,6 +500,35 @@ Coded by www.creative-tim.com
         alertBox.parentNode.removeChild(alertBox);
       }
     }, 5000); // 3초 후에 알림창 닫기
+
+    // 알림창을 body에 추가
+    document.body.appendChild(alertBox);
+  }
+
+  // 알람 -> 이상구간 탐지용
+  function displayAlert2(message) {
+    // 알림창 엘리먼트 생성
+    var alertBox = document.createElement('div');
+    alertBox.className = 'alert-box';
+    alertBox.textContent = message;
+
+    // 알림창 스타일 설정
+    alertBox.style.position = 'fixed';
+    alertBox.style.top = '50%';
+    alertBox.style.left = '50%';
+    alertBox.style.transform = 'translate(-50%, -50%)';
+    alertBox.style.backgroundColor = 'white';
+    alertBox.style.border = '1px solid black';
+    alertBox.style.padding = '20px';
+    alertBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+    alertBox.style.zIndex = '1000';
+
+    // 알림창을 일정 시간 후에 자동으로 닫기
+    // setTimeout(function () {
+    //   if (alertBox.parentNode) {
+    //     alertBox.parentNode.removeChild(alertBox);
+    //   }
+    // }, 5); // 3초 후에 알림창 닫기
 
     // 알림창을 body에 추가
     document.body.appendChild(alertBox);
