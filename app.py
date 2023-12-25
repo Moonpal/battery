@@ -1,3 +1,4 @@
+# 초기 라이브리러 불러올 코드
 from flask import Flask, render_template, redirect, url_for, session, request
 from flask_socketio import emit
 from flask_socketio import SocketIO
@@ -19,30 +20,16 @@ import threading
 ## arguments 정의
 arguments=collections.namedtuple('Args',
  'signal_file timest_form anomaly_file mode aggregate_interval regate_interval')
-args=arguments(signal_file='C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv',
+args=arguments(signal_file='',
       timest_form=0,
-      anomaly_file='C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv',
+      
+      ## label 데이터 파일 경로 설정 1
+      anomaly_file='C:/Users/user/BusanDigitalAcademy/Battery_Project/Test07_NG_dchg_Label.csv',
+      
       mode='predict',
       aggregate_interval=1,
       regate_interval=1)
       
-
-# 파일 경로
-# "C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test01_OK_chg_Label.csv"
-# "C:\Users\user\BusanDigitalAcademy\batterydata\data\preprocessed\test\Test02_OK_dchg_Label.csv"
-# "C:\Users\user\BusanDigitalAcademy\batterydata\data\preprocessed\test\Test03_OK_chg_Label.csv"
-# 'C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test07_NG_dchg_Label.csv'
-
-
-## 8번 파일
-# args=arguments(signal_file='/content/drive/MyDrive/충방전 데이터파일/data/raw_data/test/Test07_NG_dchg.csv',
-#       timest_form=0,
-#       anomaly_file='C:/Users/user/BusanDigitalAcademy/batterydata/data/preprocessed/test/Test08_NG_chg_Label.csv',
-#       mode='predict',
-#       aggregate_interval=1,
-#       regate_interval=1)
-
-#########################################################################################################################
 app = Flask(__name__)
 app.static_folder = 'static'
 socketio = SocketIO(app)
@@ -68,22 +55,22 @@ accumulated_df = pd.DataFrame()
 total_data_count = 0
 
 # 초기 데이터 로드 함수
-def load_initial_data():
-    global accumulated_df
-    global data_transfer_status
-    global total_data_count
-    total_data_count = 4200 # 아래 LIMIT 4400과 함께 수정
+# def load_initial_data():
+#     global accumulated_df
+#     global data_transfer_status
+#     global total_data_count
+#     total_data_count = 4100 # 아래 LIMIT 4400과 함께 수정
     
-    try:
-        cursor = db.cursor()
-        cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4200")
-        initial_data = cursor.fetchall()
-        accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
-        accumulated_df = accumulated_df.iloc[:, 23:]
-    except pymysql.Error as e:
-        print(e)
-    finally:
-        cursor.close()
+#     try:
+#         cursor = db.cursor()
+#         cursor.execute("SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 4100")
+#         initial_data = cursor.fetchall()
+#         accumulated_df = pd.DataFrame(initial_data, columns=[column[0] for column in cursor.description])
+#         accumulated_df = accumulated_df.iloc[:, 23:]
+#     except pymysql.Error as e:
+#         print(e)
+#     finally:
+#         cursor.close()
 
 # 데이터를 전송받는 함수 구축
 def send_data():
@@ -98,13 +85,10 @@ def send_data():
         last_time = None
 
         while True:
-            # 데이터베이스에서 다음 데이터 가져오기
+            # 데이터베이스에서 다음 데이터 가져오기(10 묶음)
             if last_time is None:
                 query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 10"
-                # query = "SELECT * FROM test08_ng_chg ORDER BY Time ASC LIMIT 10"
-                # query = "SELECT * FROM test07_ng_dchg ORDER BY Time ASC LIMIT 1"
             else:
-                # query = f"SELECT * FROM test08_ng_chg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
                 query = f"SELECT * FROM test07_ng_dchg WHERE Time > '{last_time}' ORDER BY Time ASC LIMIT 10"
             
             # 쿼리문 실행
@@ -115,7 +99,7 @@ def send_data():
                 # 데이터프레임으로 변환
                 df = pd.DataFrame([data])
 
-                # 여기에서 데이터를 슬라이싱하여 온도, 전압 데이터로 추출
+                # 여기에서 데이터를 슬라이싱하여 온도, 전압 모두 포함된 데이터로 추출
                 sliced_df = df.iloc[:, 23:]
                 
     
@@ -130,7 +114,6 @@ def send_data():
                 total_data_count += len(sliced_df)
 
                 # 10개씩 주기적으로 diff_smooth + PCA 수행
-                # if len(accumulated_df) >= 50 and len(accumulated_df) % 50 == 0:
                 if len(accumulated_df) >= 10 and len(accumulated_df) % 10 == 0:
 
                     processed_df = diff_smooth_df(accumulated_df.copy(), lags_n=0, diffs_n=0, smooth_n=0)
@@ -141,12 +124,10 @@ def send_data():
                     
                     # 초기화
                     y_hat, critic = None, None
-                    # if len(X) >= 10:
                     if len(X) >= 10:
                         try:
                             X, y, X_index, y_index = rolling_window_sequences(X, index, window_size=100, target_size=1, step_size=1, target_column=0)
                             y_hat, critic = predict(X)
-                            # print(y_hat, critic) 문제 X
                             anomaly = Anomaly()
                         except Exception as e:
                             print(f"An error occurred during prediction: {e}")
@@ -186,28 +167,6 @@ def send_data():
                             socketio.emit('update_vol_data', vol_data, namespace='/test')
                             socketio.emit('update_tem_data', tem_data, namespace='/test')
 
-                            ###########################################################################################################
-                            # 시각화 함수 호출 
-                            # image_path_vol = save_vol_plot_to_file(vol_df)
-                            # image_path_tem = save_tem_plot_to_file(tem_df)
-                            # image_path_vol = save_vol_plot_to_file(vol_df,total_data_count)
-                            # image_path_tem = save_tem_plot_to_file(tem_df,total_data_count)
-                            # # image_path = save_plot_to_file(anomalies, length_anom, X, Z_score1, final_scores)
-                            # image_path, status = save_plot_to_file(anomalies, length_anom, X, Z_score1)
-                            # print(status)
-                            
-                            # if status == 'Anomaly Detected':
-                            #     blue_graph_detected = True
-                            #     socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
-                            #     socketio.emit('blue_graph_detected', namespace='/test')
-                            #     # 알림 전송 후 상태 초기화
-                            #     blue_graph_detected = False
-
-                            # # 이미지 파일의 경로를 클라이언트에 전송
-                            # socketio.emit('update_plot', {'image_path': image_path}, namespace='/test')
-                            # socketio.emit('update_plot_vol', {'image_path': image_path_vol}, namespace='/test')
-                            # socketio.emit('update_plot_tem', {'image_path': image_path_tem}, namespace='/test')
-                            ###########################################################################################################
                     else:
                         # 예외가 발생하거나 데이터가 충분하지 않은 경우에 대한 처리
                         pass
@@ -215,8 +174,8 @@ def send_data():
             last_time = data['Time']
             db.commit()
 
-            # 1초 간격으로 데이터 갱신
-            socketio.sleep(0.1)
+            # 1초 간격으로 데이터 갱신 (혹은 숫자 조절을 통해 빠른 주기의 데이터 갱신)
+            socketio.sleep(1)
 
     except pymysql.Error as e:
         print(e)
@@ -224,19 +183,19 @@ def send_data():
     finally:
         cursor.close()
 
-load_initial_data()
+# 초기 데이터를 불러올 경우 실행코드
+# load_initial_data()
 
 # 백그라운드 스레드에서 데이터를 실시간으로 전송하는 함수 실행
 # Flask 라우트 설정
-@app.route('/')############################################################################# templates 적용준비중
+@app.route('/')
 def index():
     # 기본 홈페이지를 렌더링합니다.
     return render_template('dashboard.html')
 
 @app.route('/start_analysis', methods=['POST'])
 def start_analysis():
-    # 분석을 시작하는 로직을 여기에 작성합니다.
-    # 예를 들어, 데이터 처리 또는 분석 작업 등.
+    # MTadGAN 알고리즘 적용 분석을 시작하는 로직
     global data_transfer_status
     data_transfer_status = 'running'
     socketio.start_background_task(target=send_data)
@@ -244,9 +203,8 @@ def start_analysis():
 
 @socketio.on('connect', namespace='/test')
 def test_connect():
-    # 클라이언트가 Socket.IO를 통해 연결되었을 때 수행할 작업.
+    # 클라이언트가 Socket.IO를 통해 연결되었을 때 로그 확인
     print('Client connected via Socket.IO')
-    # 여기에서 필요한 데이터 전송 또는 기타 작업을 수행할 수 있습니다.
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
